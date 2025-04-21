@@ -263,19 +263,46 @@ function makeBlackMove() {
             }
         }
     }
+
+    // 2. Second priority: Check if any white piece has a clear path to top and intercept
+    const whitePawnsWithClearPath = findWhitePawnsWithClearPath();
+    if (whitePawnsWithClearPath.length > 0) {
+        // Find nearest black piece that can intercept
+        const interceptionMove = findInterceptionMove(whitePawnsWithClearPath);
+        if (interceptionMove) {
+            board[interceptionMove.toRow][interceptionMove.toCol] = 'black';
+            board[interceptionMove.fromRow][interceptionMove.fromCol] = null;
+            
+            // Check if black won
+            if (interceptionMove.toRow === boardSize - 1) {
+                renderBoard();
+                setTimeout(() => {
+                    alert('Black wins!');
+                    initializeBoard();
+                }, 100);
+                return;
+            }
+            
+            // End black's turn
+            currentPlayer = 'white';
+            renderBoard();
+            updateGameStatus();
+            return;
+        }
+    }
     
-    // 2. If no capture is possible, use improved evaluation for moves
+    // 3. If no capture or interception is possible, use improved evaluation for moves
     let bestMove = null;
     let bestScore = -Infinity;
     
     for (let row = 0; row < boardSize; row++) {
         for (let col = 0; col < boardSize; col++) {
             if (board[row][col] === 'black') {
-                // Check possible moves: down, left, right
+                // Check possible moves with priority to moving downward
                 const directions = [
-                    { r: 1, c: 0 },  // Down
-                    { r: 0, c: -1 }, // Left
-                    { r: 0, c: 1 }   // Right
+                    { r: 1, c: 0 },  // Down (highest priority)
+                    { r: 0, c: -1 }, // Left (lower priority)
+                    { r: 0, c: 1 }   // Right (lower priority)
                 ];
                 
                 for (const dir of directions) {
@@ -287,8 +314,26 @@ function makeBlackMove() {
                         newCol >= 0 && newCol < boardSize && 
                         board[newRow][newCol] === null) {
                         
-                        // Enhanced score calculation
-                        let score = evaluateMove(row, col, newRow, newCol);
+                        // Enhanced score calculation with emphasis on forward movement
+                        let score = 0;
+                        
+                        // Heavily prioritize moving forward
+                        if (dir.r === 1) { // Moving down
+                            score += 100; // Huge bonus for moving forward
+                        } else {
+                            score += 20; // Much smaller bonus for side moves
+                        }
+                        
+                        // Safety - avoid capture range
+                        if (isInCaptureRange(newRow, newCol)) {
+                            score -= 60;
+                        }
+                        
+                        // Proximity to goal
+                        score += newRow * 10;
+                        
+                        // Add a small random factor
+                        score += Math.random() * 2;
                         
                         if (score > bestScore) {
                             bestScore = score;
@@ -322,7 +367,7 @@ function makeBlackMove() {
         return;
     }
     
-    // 3. If still no move found, make any valid move
+    // 4. If still no move found, make any valid move
     for (let row = 0; row < boardSize; row++) {
         for (let col = 0; col < boardSize; col++) {
             if (board[row][col] === 'black') {
@@ -365,138 +410,87 @@ function makeBlackMove() {
     }
 }
 
-// New function for enhanced move evaluation
-function evaluateMove(fromRow, fromCol, toRow, toCol) {
-    let score = 0;
+// Find white pawns that have a relatively clear path to the top row
+function findWhitePawnsWithClearPath() {
+    const pawnsWithPath = [];
     
-    // Make a temporary move to evaluate its effects
-    board[toRow][toCol] = 'black';
-    board[fromRow][fromCol] = null;
-    
-    // FACTOR 1: Progress toward goal (heavily weighted)
-    // Black wants to reach the bottom row (boardSize - 1)
-    score += toRow * 15;  // Heavily reward moving down
-    
-    // FACTOR 2: Near-win detection - huge bonus for being close to bottom row
-    if (toRow >= boardSize - 2) {
-        score += 100; // Massive bonus for being one step away from winning
-    }
-    
-    // FACTOR 3: Safety - check if the piece would be in capture range after move
-    if (isInCaptureRange(toRow, toCol)) {
-        score -= 60;  // Significant penalty for moving into capture range
-    }
-    
-    // FACTOR 4: Opportunity - check if this move creates a capture opportunity
-    const canCaptureAfterMove = checkCaptureOpportunity(toRow, toCol);
-    if (canCaptureAfterMove) {
-        score += 40;  // Bonus for setting up a capture
-    }
-    
-    // FACTOR 5: Center control - slight bonus for controlling center columns
-    if (toCol >= 2 && toCol <= boardSize - 3) {
-        score += 5;
-    }
-    
-    // FACTOR 6: Support from other black pieces (strength in numbers)
-    if (hasAdjacentBlackPiece(toRow, toCol)) {
-        score += 10;
-    }
-    
-    // FACTOR 7: Blocking white pieces from reaching the top
-    score += evaluateBlockingValue(toRow, toCol);
-    
-    // FACTOR 8: Path to goal - check if there's a relatively clear path to bottom
-    if (hasPathToBottom(toRow, toCol)) {
-        score += 25;
-    }
-    
-    // Undo the temporary move
-    board[fromRow][fromCol] = 'black';
-    board[toRow][toCol] = null;
-    
-    // Add a small random factor to break ties and add unpredictability
-    score += Math.random() * 2;
-    
-    return score;
-}
-
-// Helper functions for evaluation
-function hasAdjacentBlackPiece(row, col) {
-    const directions = [
-        { r: 1, c: 0 },  // Down
-        { r: -1, c: 0 }, // Up
-        { r: 0, c: -1 }, // Left
-        { r: 0, c: 1 }   // Right
-    ];
-    
-    for (const dir of directions) {
-        const adjRow = row + dir.r;
-        const adjCol = col + dir.c;
-        
-        if (adjRow >= 0 && adjRow < boardSize && 
-            adjCol >= 0 && adjCol < boardSize && 
-            board[adjRow][adjCol] === 'black') {
-            return true;
+    for (let col = 0; col < boardSize; col++) {
+        for (let row = 0; row < boardSize; row++) {
+            if (board[row][col] === 'white') {
+                let clearPath = true;
+                let blocksInPath = 0;
+                
+                // Check path from current position to top row
+                for (let r = row - 1; r >= 0; r--) {
+                    if (board[r][col] !== null) {
+                        blocksInPath++;
+                        if (blocksInPath > 1) {
+                            clearPath = false;
+                            break;
+                        }
+                    }
+                }
+                
+                if (clearPath) {
+                    pawnsWithPath.push({ row, col, distanceToTop: row });
+                }
+                
+                // Only check the first white piece in each column
+                break;
+            }
         }
     }
     
-    return false;
+    // Sort by distance to top (closest first)
+    pawnsWithPath.sort((a, b) => a.distanceToTop - b.distanceToTop);
+    
+    return pawnsWithPath;
 }
 
-function checkCaptureOpportunity(row, col) {
-    const directions = [
-        { r: 1, c: 0 },  // Down
-        { r: 0, c: -1 }, // Left
-        { r: 0, c: 1 },  // Right
-        { r: -1, c: 0 }  // Up
-    ];
+// Find a black piece that can move to intercept a white piece's path
+function findInterceptionMove(whitePawnsWithPath) {
+    if (whitePawnsWithPath.length === 0) return null;
     
-    for (const dir of directions) {
-        const adjRow = row + dir.r;
-        const adjCol = col + dir.c;
-        
-        if (adjRow >= 0 && adjRow < boardSize && 
-            adjCol >= 0 && adjCol < boardSize && 
-            board[adjRow][adjCol] === 'white') {
-            return true;
-        }
-    }
+    // Focus on the most dangerous white pawn (closest to top)
+    const targetPawn = whitePawnsWithPath[0];
+    let bestInterceptor = null;
+    let shortestDistance = Infinity;
     
-    return false;
-}
-
-function evaluateBlockingValue(row, col) {
-    let blockingValue = 0;
-    
-    // Check if this position blocks white pieces from advancing
-    for (let r = 0; r < boardSize; r++) {
-        for (let c = 0; c < boardSize; c++) {
-            if (board[r][c] === 'white') {
-                // If there's a white piece above this position
-                if (r > row && c === col) {
-                    // The closer the white piece is to the top, the more valuable blocking it is
-                    blockingValue += 5 * (boardSize - r);
+    for (let row = 0; row < boardSize; row++) {
+        for (let col = 0; col < boardSize; col++) {
+            if (board[row][col] === 'black') {
+                // Try moving toward the column of the white pawn
+                const colDiff = targetPawn.col - col;
+                
+                if (colDiff !== 0) {
+                    // Try to move horizontally toward the target column
+                    const moveDir = colDiff > 0 ? 1 : -1; // Right or left
+                    const newCol = col + moveDir;
+                    
+                    if (newCol >= 0 && newCol < boardSize && board[row][newCol] === null) {
+                        const distance = Math.abs(targetPawn.col - newCol) + Math.abs(targetPawn.row - row);
+                        
+                        if (distance < shortestDistance && !isInCaptureRange(row, newCol)) {
+                            shortestDistance = distance;
+                            bestInterceptor = { fromRow: row, fromCol: col, toRow: row, toCol: newCol };
+                        }
+                    }
+                } else {
+                    // Already in same column, try moving downward
+                    if (row < boardSize - 1 && board[row + 1][col] === null) {
+                        const distance = Math.abs(targetPawn.row - (row + 1));
+                        
+                        if (distance < shortestDistance && !isInCaptureRange(row + 1, col)) {
+                            shortestDistance = distance;
+                            bestInterceptor = { fromRow: row, fromCol: col, toRow: row + 1, toCol: col };
+                        }
+                    }
                 }
             }
         }
     }
     
-    return blockingValue;
-}
-
-function hasPathToBottom(row, col) {
-    // Simple check - count empty squares or black pieces in the columns below
-    let count = 0;
-    
-    for (let r = row + 1; r < boardSize; r++) {
-        if (board[r][col] === null || board[r][col] === 'black') {
-            count++;
-        }
-    }
-    
-    // Return true if we have a mostly clear path
-    return count >= (boardSize - row - 1) / 2;
+    return bestInterceptor;
 }
 
 function isInCaptureRange(row, col) {
