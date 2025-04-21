@@ -8,6 +8,7 @@ let touchStartY = 0;
 let touchStartRow = null;
 let touchStartCol = null;
 let gameMode = '1p'; // '1p' or '2p'
+let lastMovedBlackPiece = null; // Track the last moved black piece for continuity
 
 function initializeBoard() {
     board = Array.from({ length: boardSize }, () => Array(boardSize).fill(null));
@@ -24,6 +25,7 @@ function initializeBoard() {
     
     currentPlayer = 'white';
     selectedPiece = null;
+    lastMovedBlackPiece = null;
     renderBoard();
     updateGameStatus();
 }
@@ -192,6 +194,11 @@ function movePiece(fromRow, fromCol, toRow, toCol) {
     board[toRow][toCol] = movingPiece;
     board[fromRow][fromCol] = null;
     
+    // If black piece was moved, update lastMovedBlackPiece
+    if (movingPiece === 'black') {
+        lastMovedBlackPiece = { row: toRow, col: toCol };
+    }
+    
     // Check win conditions
     if (movingPiece === 'white' && toRow === 0) {
         renderBoard();
@@ -265,6 +272,9 @@ function makeBlackMove() {
                         board[newRow][newCol] = 'black';
                         board[row][col] = null;
                         
+                        // Update last moved piece
+                        lastMovedBlackPiece = { row: newRow, col: newCol };
+                        
                         // Check if black won
                         if (newRow === boardSize - 1) {
                             renderBoard();
@@ -286,7 +296,70 @@ function makeBlackMove() {
         }
     }
 
-    // Rule 4: Check if any white piece has a clear path to top and intercept
+    // Rule 2: Priority for continuing movement with the last moved piece
+    if (lastMovedBlackPiece) {
+        const { row, col } = lastMovedBlackPiece;
+        
+        // Check if this piece can move down
+        if (row < boardSize - 1 && 
+            board[row + 1][col] === null && 
+            !isAdjacentToWhite(row + 1, col)) {
+            
+            // Move the piece down
+            board[row + 1][col] = 'black';
+            board[row][col] = null;
+            
+            // Update last moved piece
+            lastMovedBlackPiece = { row: row + 1, col: col };
+            
+            // Check if black won
+            if (row + 1 === boardSize - 1) {
+                renderBoard();
+                setTimeout(() => {
+                    alert('Black wins!');
+                    initializeBoard();
+                }, 100);
+                return;
+            }
+            
+            // End black's turn
+            currentPlayer = 'white';
+            renderBoard();
+            updateGameStatus();
+            return;
+        }
+        
+        // If can't move down, try sideways moves with the last moved piece
+        const directions = [
+            { r: 0, c: -1 }, // Left
+            { r: 0, c: 1 }   // Right
+        ];
+        
+        for (const dir of directions) {
+            const newRow = row + dir.r;
+            const newCol = col + dir.c;
+            
+            if (newRow >= 0 && newRow < boardSize && 
+                newCol >= 0 && newCol < boardSize && 
+                board[newRow][newCol] === null && 
+                !isAdjacentToWhite(newRow, newCol)) {
+                
+                board[newRow][newCol] = 'black';
+                board[row][col] = null;
+                
+                // Update last moved piece
+                lastMovedBlackPiece = { row: newRow, col: newCol };
+                
+                // End black's turn
+                currentPlayer = 'white';
+                renderBoard();
+                updateGameStatus();
+                return;
+            }
+        }
+    }
+    
+    // Rule 3: Check if any white piece has a clear path to top and intercept
     const whitePawnsWithClearPath = findWhitePawnsWithClearPath();
     if (whitePawnsWithClearPath.length > 0) {
         // Find nearest black piece that can intercept
@@ -294,6 +367,9 @@ function makeBlackMove() {
         if (interceptionMove) {
             board[interceptionMove.toRow][interceptionMove.toCol] = 'black';
             board[interceptionMove.fromRow][interceptionMove.fromCol] = null;
+            
+            // Update last moved piece
+            lastMovedBlackPiece = { row: interceptionMove.toRow, col: interceptionMove.toCol };
             
             // Check if black won
             if (interceptionMove.toRow === boardSize - 1) {
@@ -313,43 +389,58 @@ function makeBlackMove() {
         }
     }
     
-    // Rule 2: Move downward if possible (without breaking Rule 1)
+    // Rule 4: Move downward if possible (without breaking Rule 1)
+    // Find the furthest advanced black piece and prioritize it
+    let furthestPiece = null;
+    let maxRow = -1;
+    
     for (let row = 0; row < boardSize; row++) {
         for (let col = 0; col < boardSize; col++) {
-            if (board[row][col] === 'black') {
-                // Try to move down first
+            if (board[row][col] === 'black' && row > maxRow) {
+                // Check if piece can move down
                 if (row < boardSize - 1 && 
                     board[row + 1][col] === null && 
                     !isAdjacentToWhite(row + 1, col)) {
-                    
-                    board[row + 1][col] = 'black';
-                    board[row][col] = null;
-                    
-                    // Check if black won
-                    if (row + 1 === boardSize - 1) {
-                        renderBoard();
-                        setTimeout(() => {
-                            alert('Black wins!');
-                            initializeBoard();
-                        }, 100);
-                        return;
-                    }
-                    
-                    // End black's turn
-                    currentPlayer = 'white';
-                    renderBoard();
-                    updateGameStatus();
-                    return;
+                    maxRow = row;
+                    furthestPiece = { row, col };
                 }
             }
         }
     }
     
-    // If no downward move is possible, try sideways moves
-    for (let row = 0; row < boardSize; row++) {
+    if (furthestPiece) {
+        const { row, col } = furthestPiece;
+        board[row + 1][col] = 'black';
+        board[row][col] = null;
+        
+        // Update last moved piece
+        lastMovedBlackPiece = { row: row + 1, col: col };
+        
+        // Check if black won
+        if (row + 1 === boardSize - 1) {
+            renderBoard();
+            setTimeout(() => {
+                alert('Black wins!');
+                initializeBoard();
+            }, 100);
+            return;
+        }
+        
+        // End black's turn
+        currentPlayer = 'white';
+        renderBoard();
+        updateGameStatus();
+        return;
+    }
+    
+    // Rule 5: If no downward move is possible, try sideways moves with the furthest piece
+    maxRow = -1;
+    furthestPiece = null;
+    
+    for (let row = boardSize - 1; row >= 0; row--) {
         for (let col = 0; col < boardSize; col++) {
             if (board[row][col] === 'black') {
-                // Try left and right moves
+                // Check if piece can move sideways
                 const directions = [
                     { r: 0, c: -1 }, // Left
                     { r: 0, c: 1 }   // Right
@@ -364,21 +455,40 @@ function makeBlackMove() {
                         board[newRow][newCol] === null && 
                         !isAdjacentToWhite(newRow, newCol)) {
                         
-                        board[newRow][newCol] = 'black';
-                        board[row][col] = null;
-                        
-                        // End black's turn
-                        currentPlayer = 'white';
-                        renderBoard();
-                        updateGameStatus();
-                        return;
+                        if (row > maxRow) {
+                            maxRow = row;
+                            furthestPiece = { row, col, direction: dir };
+                        }
                     }
                 }
             }
         }
+        
+        // If we found a piece at this row, stop searching
+        if (furthestPiece !== null) {
+            break;
+        }
     }
     
-    // If no safe move is found, just make any legal move
+    if (furthestPiece) {
+        const { row, col, direction } = furthestPiece;
+        const newRow = row + direction.r;
+        const newCol = col + direction.c;
+        
+        board[newRow][newCol] = 'black';
+        board[row][col] = null;
+        
+        // Update last moved piece
+        lastMovedBlackPiece = { row: newRow, col: newCol };
+        
+        // End black's turn
+        currentPlayer = 'white';
+        renderBoard();
+        updateGameStatus();
+        return;
+    }
+    
+    // Rule 6: If no safe move is found, just make any legal move
     // (This should rarely happen, but prevents getting stuck)
     for (let row = 0; row < boardSize; row++) {
         for (let col = 0; col < boardSize; col++) {
@@ -399,6 +509,9 @@ function makeBlackMove() {
                         
                         board[newRow][newCol] = 'black';
                         board[row][col] = null;
+                        
+                        // Update last moved piece
+                        lastMovedBlackPiece = { row: newRow, col: newCol };
                         
                         // Check if black won
                         if (newRow === boardSize - 1) {
@@ -544,6 +657,7 @@ function toggleGameMode() {
     // Reset the game
     initializeBoard();
 }
+
 // Prevent default touch behavior to avoid scrolling
 document.addEventListener('DOMContentLoaded', function() {
     // Prevent scrolling on touch devices
