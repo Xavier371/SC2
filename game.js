@@ -218,7 +218,7 @@ function isValidMove(row, col, newRow, newCol) {
 }
 
 function makeBlackMove() {
-    // 1. Try to capture any adjacent white piece
+    // 1. First priority: capture any adjacent white piece
     for (let row = 0; row < boardSize; row++) {
         for (let col = 0; col < boardSize; col++) {
             if (board[row][col] === 'black') {
@@ -264,14 +264,14 @@ function makeBlackMove() {
         }
     }
     
-    // 2. Try to move towards the goal while avoiding putting pieces in capture range
+    // 2. If no capture is possible, use improved evaluation for moves
     let bestMove = null;
     let bestScore = -Infinity;
     
     for (let row = 0; row < boardSize; row++) {
         for (let col = 0; col < boardSize; col++) {
             if (board[row][col] === 'black') {
-                // Check possible moves: down, left, right (not up)
+                // Check possible moves: down, left, right
                 const directions = [
                     { r: 1, c: 0 },  // Down
                     { r: 0, c: -1 }, // Left
@@ -287,19 +287,8 @@ function makeBlackMove() {
                         newCol >= 0 && newCol < boardSize && 
                         board[newRow][newCol] === null) {
                         
-                        // Calculate score for this move
-                        let score = 0;
-                        
-                        // Prefer moving toward the goal
-                        score += newRow * 10;
-                        
-                        // Avoid putting piece in capture range
-                        if (!isInCaptureRange(newRow, newCol)) {
-                            score += 50;
-                        }
-                        
-                        // Add slight randomness to prevent predictable play
-                        score += Math.random() * 5;
+                        // Enhanced score calculation
+                        let score = evaluateMove(row, col, newRow, newCol);
                         
                         if (score > bestScore) {
                             bestScore = score;
@@ -333,7 +322,7 @@ function makeBlackMove() {
         return;
     }
     
-    // 3. If no good move was found, make any valid move
+    // 3. If still no move found, make any valid move
     for (let row = 0; row < boardSize; row++) {
         for (let col = 0; col < boardSize; col++) {
             if (board[row][col] === 'black') {
@@ -374,6 +363,140 @@ function makeBlackMove() {
             }
         }
     }
+}
+
+// New function for enhanced move evaluation
+function evaluateMove(fromRow, fromCol, toRow, toCol) {
+    let score = 0;
+    
+    // Make a temporary move to evaluate its effects
+    board[toRow][toCol] = 'black';
+    board[fromRow][fromCol] = null;
+    
+    // FACTOR 1: Progress toward goal (heavily weighted)
+    // Black wants to reach the bottom row (boardSize - 1)
+    score += toRow * 15;  // Heavily reward moving down
+    
+    // FACTOR 2: Near-win detection - huge bonus for being close to bottom row
+    if (toRow >= boardSize - 2) {
+        score += 100; // Massive bonus for being one step away from winning
+    }
+    
+    // FACTOR 3: Safety - check if the piece would be in capture range after move
+    if (isInCaptureRange(toRow, toCol)) {
+        score -= 60;  // Significant penalty for moving into capture range
+    }
+    
+    // FACTOR 4: Opportunity - check if this move creates a capture opportunity
+    const canCaptureAfterMove = checkCaptureOpportunity(toRow, toCol);
+    if (canCaptureAfterMove) {
+        score += 40;  // Bonus for setting up a capture
+    }
+    
+    // FACTOR 5: Center control - slight bonus for controlling center columns
+    if (toCol >= 2 && toCol <= boardSize - 3) {
+        score += 5;
+    }
+    
+    // FACTOR 6: Support from other black pieces (strength in numbers)
+    if (hasAdjacentBlackPiece(toRow, toCol)) {
+        score += 10;
+    }
+    
+    // FACTOR 7: Blocking white pieces from reaching the top
+    score += evaluateBlockingValue(toRow, toCol);
+    
+    // FACTOR 8: Path to goal - check if there's a relatively clear path to bottom
+    if (hasPathToBottom(toRow, toCol)) {
+        score += 25;
+    }
+    
+    // Undo the temporary move
+    board[fromRow][fromCol] = 'black';
+    board[toRow][toCol] = null;
+    
+    // Add a small random factor to break ties and add unpredictability
+    score += Math.random() * 2;
+    
+    return score;
+}
+
+// Helper functions for evaluation
+function hasAdjacentBlackPiece(row, col) {
+    const directions = [
+        { r: 1, c: 0 },  // Down
+        { r: -1, c: 0 }, // Up
+        { r: 0, c: -1 }, // Left
+        { r: 0, c: 1 }   // Right
+    ];
+    
+    for (const dir of directions) {
+        const adjRow = row + dir.r;
+        const adjCol = col + dir.c;
+        
+        if (adjRow >= 0 && adjRow < boardSize && 
+            adjCol >= 0 && adjCol < boardSize && 
+            board[adjRow][adjCol] === 'black') {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+function checkCaptureOpportunity(row, col) {
+    const directions = [
+        { r: 1, c: 0 },  // Down
+        { r: 0, c: -1 }, // Left
+        { r: 0, c: 1 },  // Right
+        { r: -1, c: 0 }  // Up
+    ];
+    
+    for (const dir of directions) {
+        const adjRow = row + dir.r;
+        const adjCol = col + dir.c;
+        
+        if (adjRow >= 0 && adjRow < boardSize && 
+            adjCol >= 0 && adjCol < boardSize && 
+            board[adjRow][adjCol] === 'white') {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+function evaluateBlockingValue(row, col) {
+    let blockingValue = 0;
+    
+    // Check if this position blocks white pieces from advancing
+    for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize; c++) {
+            if (board[r][c] === 'white') {
+                // If there's a white piece above this position
+                if (r > row && c === col) {
+                    // The closer the white piece is to the top, the more valuable blocking it is
+                    blockingValue += 5 * (boardSize - r);
+                }
+            }
+        }
+    }
+    
+    return blockingValue;
+}
+
+function hasPathToBottom(row, col) {
+    // Simple check - count empty squares or black pieces in the columns below
+    let count = 0;
+    
+    for (let r = row + 1; r < boardSize; r++) {
+        if (board[r][col] === null || board[r][col] === 'black') {
+            count++;
+        }
+    }
+    
+    // Return true if we have a mostly clear path
+    return count >= (boardSize - row - 1) / 2;
 }
 
 function isInCaptureRange(row, col) {
