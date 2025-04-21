@@ -22,8 +22,10 @@ h1 {
 
 .button-container {
     display: flex;
+    flex-direction: column;
     gap: 10px;
     margin-bottom: 15px;
+    align-items: center;
 }
 
 #instructions-btn, #mode-toggle-btn, #close-instructions-btn {
@@ -33,10 +35,7 @@ h1 {
     border: none;
     border-radius: 4px;
     cursor: pointer;
-}
-
-#mode-toggle-btn {
-    background-color: #2196F3;
+    width: 150px; /* Fixed width for both buttons */
 }
 
 #close-instructions-btn {
@@ -184,11 +183,6 @@ h1 {
         font-size: 24px;
         margin-top: 10px;
         margin-bottom: 5px;
-    }
-
-    .button-container {
-        flex-direction: column;
-        gap: 5px;
     }
     
     #game-board {
