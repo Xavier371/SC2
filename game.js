@@ -651,7 +651,7 @@ function toggleGameMode() {
     gameMode = gameMode === '1p' ? '2p' : '1p';
     const modeBtn = document.getElementById('mode-toggle-btn');
     if (modeBtn) {
-        modeBtn.textContent = `Mode: ${gameMode === '1p' ? '1 Player' : '2 Player'}`;
+        modeBtn.textContent = `${gameMode === '1p' ? 'One Player' : 'Two Player'}`;
     }
     
     // Reset the game
