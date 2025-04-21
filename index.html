@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Triangle Chess Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Triangle Chess Game</h1>
+    <button id="instructions-btn">Show Instructions</button>
+    <div id="instructions" class="hidden">
+        <p>- Drag white pieces to move. White tries to reach the top row.</p>
+        <p>- Black pieces are controlled by the computer and trying to reach the bottom row.</p>
+        <p>- Pieces can only move one space at a time horizontally or vertically.</p>
+        <p>- Pieces can capture opponent pieces by moving onto their square.</p>
+    </div>
+    <div id="game-board"></div>
+    <script src="game.js"></script>
+</body>
+</html>
