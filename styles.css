@@ -20,8 +20,13 @@ h1 {
     margin-bottom: 10px;
 }
 
-#instructions-btn {
+.button-container {
+    display: flex;
+    gap: 10px;
     margin-bottom: 15px;
+}
+
+#instructions-btn, #mode-toggle-btn, #close-instructions-btn {
     padding: 8px 15px;
     background-color: #4CAF50;
     color: white;
@@ -30,17 +35,34 @@ h1 {
     cursor: pointer;
 }
 
-#instructions {
-    margin-bottom: 15px;
-    padding: 10px;
-    background-color: #fff;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    max-width: 500px;
+#mode-toggle-btn {
+    background-color: #2196F3;
 }
 
-#instructions p {
-    margin: 5px 0;
+#close-instructions-btn {
+    margin-top: 15px;
+}
+
+.popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.popup-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    max-width: 500px;
+    width: 80%;
+    text-align: center;
 }
 
 .hidden {
@@ -162,6 +184,11 @@ h1 {
         font-size: 24px;
         margin-top: 10px;
         margin-bottom: 5px;
+    }
+
+    .button-container {
+        flex-direction: column;
+        gap: 5px;
     }
     
     #game-board {
