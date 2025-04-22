@@ -247,37 +247,7 @@ function isValidMove(row, col, newRow, newCol) {
 }
 
 function makeBlackMove() {
-    // PRIORITY 1: Block white pawns that could reach the end of the board
-    const whitePawnsWithClearPath = findWhitePawnsWithClearPath();
-    if (whitePawnsWithClearPath.length > 0) {
-        // Find the closest black piece that can block the path
-        const blockingMove = findBlockingMove(whitePawnsWithClearPath[0]);
-        if (blockingMove) {
-            board[blockingMove.toRow][blockingMove.toCol] = 'black';
-            board[blockingMove.fromRow][blockingMove.fromCol] = null;
-            
-            // Update last moved piece
-            lastMovedBlackPiece = { row: blockingMove.toRow, col: blockingMove.toCol };
-            
-            // Check if black won
-            if (blockingMove.toRow === boardSize - 1) {
-                renderBoard();
-                setTimeout(() => {
-                    alert('Black wins!');
-                    initializeBoard();
-                }, 100);
-                return;
-            }
-            
-            // End black's turn
-            currentPlayer = 'white';
-            renderBoard();
-            updateGameStatus();
-            return;
-        }
-    }
-
-    // PRIORITY 2: Capture adjacent white pawns if possible
+    // PRIORITY 1: Capture adjacent white pawns if possible
     for (let row = 0; row < boardSize; row++) {
         for (let col = 0; col < boardSize; col++) {
             if (board[row][col] === 'black') {
@@ -326,8 +296,38 @@ function makeBlackMove() {
         }
     }
 
-    // PRIORITY 4: Try to advance black pawns toward the end of the board
-    // While adhering to PRIORITY 3: Never move into a square adjacent to a white piece
+    // PRIORITY 2: Block white pawns that could reach the end of the board
+    const whitePawnsWithClearPath = findWhitePawnsWithClearPath();
+    if (whitePawnsWithClearPath.length > 0) {
+        // Find the closest black piece that can block the path
+        const blockingMove = findBlockingMove(whitePawnsWithClearPath[0]);
+        if (blockingMove) {
+            board[blockingMove.toRow][blockingMove.toCol] = 'black';
+            board[blockingMove.fromRow][blockingMove.fromCol] = null;
+            
+            // Update last moved piece
+            lastMovedBlackPiece = { row: blockingMove.toRow, col: blockingMove.toCol };
+            
+            // Check if black won
+            if (blockingMove.toRow === boardSize - 1) {
+                renderBoard();
+                setTimeout(() => {
+                    alert('Black wins!');
+                    initializeBoard();
+                }, 100);
+                return;
+            }
+            
+            // End black's turn
+            currentPlayer = 'white';
+            renderBoard();
+            updateGameStatus();
+            return;
+        }
+    }
+
+    // PRIORITY 3: Try to advance black pawns toward the end of the board
+    // While adhering to: Never move into a square adjacent to a white piece
     
     // First try to continue with the last moved piece if possible
     if (lastMovedBlackPiece) {
@@ -425,7 +425,7 @@ function makeBlackMove() {
             if (board[row][col] === 'black') {
                 // Try sideways moves
                 const directions = [
-                    { r: 0, c: -1 }, // Left
+                    { r: A0, c: -1 }, // Left
                     { r: 0, c: 1 }   // Right
                 ];
                 
@@ -477,7 +477,6 @@ function makeBlackMove() {
     renderBoard();
     updateGameStatus();
 }
-
 // Helper function: Check if a position is adjacent to a white piece
 function isAdjacentToWhite(row, col) {
     const directions = [
