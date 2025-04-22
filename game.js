@@ -477,6 +477,7 @@ function makeBlackMove() {
     renderBoard();
     updateGameStatus();
 }
+
 // Helper function: Check if a position is adjacent to a white piece
 function isAdjacentToWhite(row, col) {
     const directions = [
