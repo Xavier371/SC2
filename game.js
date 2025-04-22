@@ -189,6 +189,7 @@ function cellClick(row, col) {
 
 function movePiece(fromRow, fromCol, toRow, toCol) {
     const movingPiece = board[fromRow][fromCol];
+    const capturedPiece = board[toRow][toCol];
     
     // Move the piece
     board[toRow][toCol] = movingPiece;
@@ -200,6 +201,8 @@ function movePiece(fromRow, fromCol, toRow, toCol) {
     }
     
     // Check win conditions
+    
+    // Win by reaching the opposite end
     if (movingPiece === 'white' && toRow === 0) {
         renderBoard();
         setTimeout(() => {
@@ -216,6 +219,29 @@ function movePiece(fromRow, fromCol, toRow, toCol) {
         return;
     }
     
+    // Win by capturing all opponent's pieces
+    if (capturedPiece) {
+        // Check if all pieces of a color have been captured
+        const remainingWhite = countPieces('white');
+        const remainingBlack = countPieces('black');
+        
+        if (remainingWhite === 0) {
+            renderBoard();
+            setTimeout(() => {
+                alert('Black wins by capturing all white pieces!');
+                initializeBoard();
+            }, 100);
+            return;
+        } else if (remainingBlack === 0) {
+            renderBoard();
+            setTimeout(() => {
+                alert('White wins by capturing all black pieces!');
+                initializeBoard();
+            }, 100);
+            return;
+        }
+    }
+    
     // Switch turns
     currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
     selectedPiece = null;
@@ -226,6 +252,19 @@ function movePiece(fromRow, fromCol, toRow, toCol) {
     if (gameMode === '1p' && currentPlayer === 'black') {
         setTimeout(makeBlackMove, 500);
     }
+}
+
+// Helper function to count pieces of a given color
+function countPieces(color) {
+    let count = 0;
+    for (let row = 0; row < boardSize; row++) {
+        for (let col = 0; col < boardSize; col++) {
+            if (board[row][col] === color) {
+                count++;
+            }
+        }
+    }
+    return count;
 }
 
 function isValidMove(row, col, newRow, newCol) {
@@ -275,11 +314,22 @@ function makeBlackMove() {
                         // Update last moved piece
                         lastMovedBlackPiece = { row: newRow, col: newCol };
                         
-                        // Check if black won
+                        // Check if black won by reaching the end
                         if (newRow === boardSize - 1) {
                             renderBoard();
                             setTimeout(() => {
                                 alert('Black wins!');
+                                initializeBoard();
+                            }, 100);
+                            return;
+                        }
+                        
+                        // Check if black won by capturing all white pieces
+                        const remainingWhite = countPieces('white');
+                        if (remainingWhite === 0) {
+                            renderBoard();
+                            setTimeout(() => {
+                                alert('Black wins by capturing all white pieces!');
                                 initializeBoard();
                             }, 100);
                             return;
@@ -308,7 +358,7 @@ function makeBlackMove() {
             // Update last moved piece
             lastMovedBlackPiece = { row: blockingMove.toRow, col: blockingMove.toCol };
             
-            // Check if black won
+            // Check if black won by reaching the end
             if (blockingMove.toRow === boardSize - 1) {
                 renderBoard();
                 setTimeout(() => {
