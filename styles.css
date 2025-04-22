@@ -272,27 +272,30 @@ h1 {
         font-size: 14px;
     }
     
-    /* Larger game board for landscape mode */
+    /* Maximize game board size for landscape mode */
     #game-board {
-        grid-template-columns: repeat(8, min(45px, 6vh));
-        grid-template-rows: repeat(8, min(45px, 6vh));
+        grid-template-columns: repeat(8, 1fr);
+        grid-template-rows: repeat(8, 1fr);
+        width: 100%;
+        height: 100vh;
+        max-height: 100vh;
+        max-width: 100vw;
         margin: 0;
-        transform: translateY(-5%); /* Move up slightly */
     }
     
     #game-board div {
-        width: min(45px, 6vh);
-        height: min(45px, 6vh);
+        width: 100%;
+        height: 100%;
     }
     
     .triangle::before {
-        font-size: min(30px, 4vh);
-        line-height: min(30px, 4vh);
+        font-size: 3vh;
+        line-height: 3vh;
     }
     
     .triangle.white, .triangle.black {
-        border-left: min(15px, 2vh) solid transparent;
-        border-right: min(15px, 2vh) solid transparent;
-        border-bottom: min(28px, 3.5vh) solid;
+        border-left: 1.5vh solid transparent;
+        border-right: 1.5vh solid transparent;
+        border-bottom: 2.5vh solid;
     }
 }
