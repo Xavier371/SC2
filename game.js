@@ -67,18 +67,6 @@ function renderBoard() {
                         isDragging = false;
                     });
                     
-                    // Touch events for mobile
-                    triangle.addEventListener('touchstart', (e) => {
-                        const touch = e.touches[0];
-                        touchStartX = touch.clientX;
-                        touchStartY = touch.clientY;
-                        touchStartRow = row;
-                        touchStartCol = col;
-                        selectedPiece = { row, col };
-                        renderBoard();
-                        e.preventDefault();
-                    });
-                    
                     // Click/tap for selection
                     triangle.addEventListener('mousedown', (e) => {
                         e.stopPropagation();
@@ -121,35 +109,6 @@ function renderBoard() {
                     selectedPiece = null;
                     renderBoard();
                 }
-            });
-            
-            // Touch events for mobile
-            cell.addEventListener('touchend', (e) => {
-                if (!selectedPiece) return;
-                
-                const touch = e.changedTouches[0];
-                const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                
-                // Find the cell that was touched
-                let touchedCell = element;
-                while (touchedCell && !touchedCell.dataset.row) {
-                    if (touchedCell === document.body) break;
-                    touchedCell = touchedCell.parentElement;
-                }
-                
-                if (touchedCell && touchedCell.dataset.row) {
-                    const toRow = parseInt(touchedCell.dataset.row);
-                    const toCol = parseInt(touchedCell.dataset.col);
-                    
-                    if (isValidMove(selectedPiece.row, selectedPiece.col, toRow, toCol)) {
-                        movePiece(selectedPiece.row, selectedPiece.col, toRow, toCol);
-                    } else {
-                        selectedPiece = null;
-                        renderBoard();
-                    }
-                }
-                
-                e.preventDefault();
             });
             
             gameBoard.appendChild(cell);
@@ -235,7 +194,7 @@ function movePiece(fromRow, fromCol, toRow, toCol) {
         } else if (remainingBlack === 0) {
             renderBoard();
             setTimeout(() => {
-                alert('White wins by capturing all black pieces!');
+                alert('White wins by capturing all white pieces!');
                 initializeBoard();
             }, 100);
             return;
@@ -663,16 +622,123 @@ function toggleGameMode() {
     initializeBoard();
 }
 
+// Handle swipe gestures on mobile
+function handleSwipe(startX, startY, endX, endY, startRow, startCol) {
+    // Calculate the swipe direction
+    const dx = endX - startX;
+    const dy = endY - startY;
+    
+    // Determine which direction has the larger change
+    if (Math.abs(dx) > Math.abs(dy)) {
+        // Horizontal swipe
+        if (dx > 30) {
+            // Right swipe
+            const newCol = startCol + 1;
+            if (newCol < boardSize && isValidMove(startRow, startCol, startRow, newCol)) {
+                movePiece(startRow, startCol, startRow, newCol);
+                return true;
+            }
+        } else if (dx < -30) {
+            // Left swipe
+            const newCol = startCol - 1;
+            if (newCol >= 0 && isValidMove(startRow, startCol, startRow, newCol)) {
+                movePiece(startRow, startCol, startRow, newCol);
+                return true;
+            }
+        }
+    } else {
+        // Vertical swipe
+        if (dy > 30) {
+            // Down swipe
+            const newRow = startRow + 1;
+            if (newRow < boardSize && isValidMove(startRow, startCol, newRow, startCol)) {
+                movePiece(startRow, startCol, newRow, startCol);
+                return true;
+            }
+        } else if (dy < -30) {
+            // Up swipe
+            const newRow = startRow - 1;
+            if (newRow >= 0 && isValidMove(startRow, startCol, newRow, startCol)) {
+                movePiece(startRow, startCol, newRow, startCol);
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
 // Prevent default touch behavior to avoid scrolling
 document.addEventListener('DOMContentLoaded', function() {
-    // Prevent scrolling on touch devices
-    document.addEventListener('touchmove', function(e) {
-        if (e.target.closest('#game-board')) {
+    const gameBoard = document.getElementById('game-board');
+    
+    // Handle touch start on the board
+    gameBoard.addEventListener('touchstart', function(e) {
+        const touch = e.touches[0];
+        const element = document.elementFromPoint(touch.clientX, touch.clientY);
+        
+        // Find the cell that was touched
+        let touchedCell = element;
+        while (touchedCell && !touchedCell.dataset.row) {
+            // If we touched a triangle, look for its parent cell
+            if (touchedCell.classList && touchedCell.classList.contains('triangle')) {
+                touchedCell = touchedCell.parentElement;
+                break;
+            }
+            if (touchedCell === document.body) break;
+            touchedCell = touchedCell.parentElement;
+        }
+        
+        if (touchedCell && touchedCell.dataset.row) {
+            const row = parseInt(touchedCell.dataset.row);
+            const col = parseInt(touchedCell.dataset.col);
+            
+            // Check if the cell contains a piece that the current player can move
+            if (board[row][col] === currentPlayer || 
+                (gameMode === '2p' && currentPlayer === 'black' && board[row][col] === 'black')) {
+                
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                touchStartRow = row;
+                touchStartCol = col;
+                selectedPiece = { row, col };
+                renderBoard();
+            }
+        }
+        
+        // Prevent scrolling if we're interacting with the game board
+        e.preventDefault();
+    }, { passive: false });
+    
+    // Handle touch move for visual feedback (optional)
+    gameBoard.addEventListener('touchmove', function(e) {
+        if (selectedPiece) {
             e.preventDefault();
         }
     }, { passive: false });
     
-    document.addEventListener('touchstart', function(e) {
+    // Handle touch end to complete the swipe
+    gameBoard.addEventListener('touchend', function(e) {
+        if (selectedPiece) {
+            const touch = e.changedTouches[0];
+            const endX = touch.clientX;
+            const endY = touch.clientY;
+            
+            // Process the swipe and make the move if valid
+            const moved = handleSwipe(touchStartX, touchStartY, endX, endY, touchStartRow, touchStartCol);
+            
+            if (!moved) {
+                // If no move was made, just deselect the piece
+                selectedPiece = null;
+                renderBoard();
+            }
+            
+            e.preventDefault();
+        }
+    }, { passive: false });
+    
+    // Prevent scrolling on touch devices
+    document.addEventListener('touchmove', function(e) {
         if (e.target.closest('#game-board')) {
             e.preventDefault();
         }
