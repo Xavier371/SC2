@@ -229,8 +229,8 @@ h1 {
     body {
         flex-direction: row;
         justify-content: space-between;
-        align-items: flex-start; /* Align to top */
-        padding: 5px 10px;
+        align-items: flex-start;
+        padding: 0;
         overflow: auto;
         height: 100vh;
     }
@@ -241,7 +241,7 @@ h1 {
         align-items: center;
         width: 30%;
         margin-left: 5px;
-        padding-top: 10px; /* Move content up */
+        padding-top: 3px; /* Just a little padding */
     }
     
     .right-container {
@@ -249,49 +249,50 @@ h1 {
         justify-content: center;
         align-items: center;
         width: 65%;
-        height: 98vh; /* Take up almost full height */
+        height: 100vh;
         margin-right: 5px;
     }
     
     h1 {
         font-size: 20px;
-        margin: 0 0 10px 0;
+        margin: 0 0 5px 0;
         text-align: center;
     }
     
     .button-container {
         flex-direction: column;
         width: 100%;
-        gap: 8px;
-        margin-bottom: 5px;
+        gap: 5px;
+        margin-bottom: 0;
     }
     
     #instructions-btn, #mode-toggle-btn {
         width: 120px;
-        padding: 8px 5px;
+        padding: 6px 5px;
         font-size: 14px;
     }
     
+    /* Larger game board for landscape mode */
     #game-board {
-        grid-template-columns: repeat(8, min(33px, 4.2vh));
-        grid-template-rows: repeat(8, min(33px, 4.2vh));
+        grid-template-columns: repeat(8, min(38px, 5vh));
+        grid-template-rows: repeat(8, min(38px, 5vh));
         margin: 0;
-        transform: translateY(-10%); /* Move board up by 10% */
+        transform: translateY(-10%); /* Move up slightly */
     }
     
     #game-board div {
-        width: min(33px, 4.2vh);
-        height: min(33px, 4.2vh);
+        width: min(38px, 5vh);
+        height: min(38px, 5vh);
     }
     
     .triangle::before {
-        font-size: min(22px, 2.8vh);
-        line-height: min(22px, 2.8vh);
+        font-size: min(25px, 3.2vh);
+        line-height: min(25px, 3.2vh);
     }
     
     .triangle.white, .triangle.black {
-        border-left: min(11px, 1.4vh) solid transparent;
-        border-right: min(11px, 1.4vh) solid transparent;
-        border-bottom: min(18px, 2.3vh) solid;
+        border-left: min(12px, 1.6vh) solid transparent;
+        border-right: min(12px, 1.6vh) solid transparent;
+        border-bottom: min(22px, 2.8vh) solid;
     }
 }
