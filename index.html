@@ -7,22 +7,32 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Triangle Chess Game</h1>
-    <div class="button-container">
-        <button id="instructions-btn">Show Instructions</button>
-        <button id="mode-toggle-btn">One Player</button>
+    <div class="left-container">
+        <h1>Triangle Chess Game</h1>
+        <div class="button-container">
+            <button id="instructions-btn">Show Instructions</button>
+            <button id="mode-toggle-btn">One Player</button>
+        </div>
     </div>
+    
+    <div class="right-container">
+        <div id="game-board"></div>
+    </div>
+    
+    <div id="game-status"></div>
+    
     <div id="instructions-popup" class="popup hidden">
         <div class="popup-content">
-            <h2>Game Instructions</h2>
-            <p>- Drag white pieces to move. White tries to reach the top row.</p>
-            <p>- Black pieces are controlled by the computer (1P) or Player 2 (2P).</p>
-            <p>- Pieces can only move one space at a time horizontally or vertically.</p>
-            <p>- Pieces can capture opponent pieces by moving onto their square.</p>
+            <h2>How to Play</h2>
+            <p>Move your triangles one square at a time (up, down, left, or right).</p>
+            <p>White pieces start at the bottom and try to reach the top row.</p>
+            <p>Black pieces start at the top and try to reach the bottom row.</p>
+            <p>You can capture opponent pieces by moving onto their square.</p>
+            <p>In one-player mode, you control the white pieces.</p>
             <button id="close-instructions-btn">Close</button>
         </div>
     </div>
-    <div id="game-board"></div>
+    
     <script src="game.js"></script>
 </body>
 </html>
