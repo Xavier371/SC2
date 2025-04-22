@@ -425,7 +425,7 @@ function makeBlackMove() {
             if (board[row][col] === 'black') {
                 // Try sideways moves
                 const directions = [
-                    { r: A0, c: -1 }, // Left
+                    { r: 0, c: -1 }, // Left
                     { r: 0, c: 1 }   // Right
                 ];
                 
