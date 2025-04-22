@@ -378,8 +378,8 @@ function makeBlackMove() {
     // PRIORITY 2: Block white pawns that could reach the end of the board
     const whitePawnsWithClearPath = findWhitePawnsWithClearPath();
     if (whitePawnsWithClearPath.length > 0) {
-        // Find the closest black piece that can block the path
-        const blockingMove = findBlockingMove(whitePawnsWithClearPath[0]);
+        // Find the best blocking move for the white pawn with the clearest path
+        const blockingMove = findImprovedBlockingMove(whitePawnsWithClearPath[0]);
         if (blockingMove) {
             board[blockingMove.toRow][blockingMove.toCol] = 'black';
             board[blockingMove.fromRow][blockingMove.fromCol] = null;
@@ -613,11 +613,34 @@ function findWhitePawnsWithClearPath() {
     return pawnsWithPath;
 }
 
-// Find a move to block a white pawn with a clear path to the top
-function findBlockingMove(whitePawn) {
+// Updated blocking move finder that implements the new strategy
+function findImprovedBlockingMove(whitePawn) {
     if (!whitePawn) return null;
     
-    // First, try to find a black piece already in the same column that can move up
+    // First, try to find a black piece that can flank from adjacent columns
+    // but only if they're above (closer to row 0) than the white piece
+    for (let row = 0; row < whitePawn.row; row++) {
+        // Check adjacent columns
+        const adjacentCols = [whitePawn.col - 1, whitePawn.col + 1];
+        
+        for (const col of adjacentCols) {
+            // Check if position is valid and has a black piece
+            if (col >= 0 && col < boardSize && board[row][col] === 'black') {
+                // Check if there's an empty space one square closer to the white's column
+                const moveCol = col < whitePawn.col ? col + 1 : col - 1;
+                
+                // If this position is safe and valid, move to flank the white piece
+                if (moveCol === whitePawn.col && 
+                    board[row][moveCol] === null && 
+                    !isAdjacentToWhite(row, moveCol)) {
+                    return { fromRow: row, fromCol: col, toRow: row, toCol: moveCol };
+                }
+            }
+        }
+    }
+    
+    // If no flanking move is available, try to find a black piece 
+    // already in the same column that can move up
     for (let row = whitePawn.row + 1; row < boardSize; row++) {
         if (board[row][whitePawn.col] === 'black' && row > 0 && 
             board[row - 1][whitePawn.col] === null && 
@@ -627,9 +650,32 @@ function findBlockingMove(whitePawn) {
         }
     }
     
-    // Next, find black pieces that are one move away from blocking the column
-    for (let row = 0; row < boardSize; row++) {
-        // Check pieces adjacent to the white pawn's column
+    // Next, look for black pieces not currently in adjacent columns
+    // that can move to an adjacent column (to set up a future flanking move)
+    for (let row = 0; row < whitePawn.row; row++) {
+        for (let col = 0; col < boardSize; col++) {
+            if (board[row][col] === 'black') {
+                // Check if this piece can move to a position adjacent to the white pawn's column
+                const targetCols = [whitePawn.col - 1, whitePawn.col + 1];
+                
+                for (const targetCol of targetCols) {
+                    if (targetCol >= 0 && targetCol < boardSize && 
+                        Math.abs(col - targetCol) === 1 && // Check if it's one move away
+                        row === whitePawn.row - 1 && // Ideally position one row ahead of white
+                        board[row][targetCol] === null && 
+                        !isAdjacentToWhite(row, targetCol)) {
+                        
+                        return { fromRow: row, fromCol: col, toRow: row, toCol: targetCol };
+                    }
+                }
+            }
+        }
+    }
+    
+    // If no good flanking move is available, fall back to direct blocking
+    // But only for black pieces that are still above the white piece
+    for (let row = 0; row < whitePawn.row; row++) {
+        // Look for black pieces in adjacent columns
         const adjacentCols = [whitePawn.col - 1, whitePawn.col + 1];
         
         for (const col of adjacentCols) {
@@ -642,11 +688,12 @@ function findBlockingMove(whitePawn) {
         }
     }
     
-    // If no direct blocking is possible, find the nearest black piece that can move toward the column
+    // If no direct blocking from adjacent is possible, try to find any black piece that can
+    // move toward blocking the column, but only if it's above the white piece
     let bestBlocker = null;
     let minDistance = Infinity;
     
-    for (let row = 0; row < boardSize; row++) {
+    for (let row = 0; row < whitePawn.row; row++) {
         for (let col = 0; col < boardSize; col++) {
             if (board[row][col] === 'black') {
                 const distance = Math.abs(col - whitePawn.col);
