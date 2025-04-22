@@ -272,27 +272,26 @@ h1 {
         font-size: 14px;
     }
     
-    /* Adjusted game board size for landscape mode */
+    /* Use the same dimensions as portrait mode */
     #game-board {
-        grid-template-columns: repeat(8, min(40px, 5vh));
-        grid-template-rows: repeat(8, min(40px, 5vh));
-        margin: 0;
-        transform: translateY(-5%); /* Move up slightly */
+        grid-template-columns: repeat(8, 40px);
+        grid-template-rows: repeat(8, 40px);
+        margin: 15px 0;
     }
     
     #game-board div {
-        width: min(40px, 5vh);
-        height: min(40px, 5vh);
+        width: 40px;
+        height: 40px;
     }
     
     .triangle::before {
-        font-size: min(28px, 3.5vh);
-        line-height: min(28px, 3.5vh);
+        font-size: 30px;
+        line-height: 30px;
     }
     
     .triangle.white, .triangle.black {
-        border-left: min(14px, 1.75vh) solid transparent;
-        border-right: min(14px, 1.75vh) solid transparent;
-        border-bottom: min(24px, 3vh) solid;
+        border-left: 15px solid transparent;
+        border-right: 15px solid transparent;
+        border-bottom: 25px solid;
     }
 }
