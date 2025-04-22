@@ -6,7 +6,7 @@ body {
     justify-content: flex-start;
     height: 100vh;
     margin: 0;
-    padding-top: 20px; /* Increased padding to move content down a bit */
+    padding-top: 20px;
     background-color: #f0f0f0;
     overflow: hidden;
     position: fixed;
@@ -19,14 +19,14 @@ body {
 
 h1 {
     margin-top: 0;
-    margin-bottom: 15px; /* Increased margin */
+    margin-bottom: 15px;
 }
 
 .button-container {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-bottom: 15px; /* Increased margin */
+    margin-bottom: 15px;
     align-items: center;
 }
 
@@ -37,7 +37,7 @@ h1 {
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    width: 150px; /* Fixed width for both buttons */
+    width: 150px;
 }
 
 #close-instructions-btn {
@@ -75,7 +75,7 @@ h1 {
     grid-template-columns: repeat(8, 60px);
     grid-template-rows: repeat(8, 60px);
     gap: 2px;
-    margin: 20px 0; /* Increased top margin to move board down */
+    margin: 20px 0;
     border: 2px solid #333;
     background-color: #ccc;
     touch-action: none;
@@ -196,7 +196,7 @@ h1 {
     #game-board {
         grid-template-columns: repeat(8, 40px);
         grid-template-rows: repeat(8, 40px);
-        margin: 15px 0; /* More margin to move board down */
+        margin: 15px 0;
     }
     
     #game-board div {
@@ -227,25 +227,29 @@ h1 {
 /* Landscape orientation for phones */
 @media (max-height: 480px) and (orientation: landscape) {
     body {
-        flex-direction: row; /* Change to row layout */
-        justify-content: space-around; /* Space between left and right side */
+        flex-direction: row;
+        justify-content: space-between; /* Changed to space-between */
         align-items: center;
-        padding: 5px;
-        overflow: auto; /* Allow scrolling if needed */
+        padding: 5px 10px; /* Added horizontal padding */
+        overflow: auto;
+        height: 100vh;
     }
     
     .left-container {
         display: flex;
         flex-direction: column;
         align-items: center;
-        width: 35%; /* Take up left side */
+        width: 30%; /* Reduced width */
+        margin-left: 2%; /* Added left margin */
     }
     
     .right-container {
         display: flex;
         justify-content: center;
         align-items: center;
-        width: 65%; /* Take up right side */
+        width: 65%; /* Increased width */
+        height: 100%;
+        margin-right: 2%; /* Added right margin */
     }
     
     h1 {
@@ -268,24 +272,24 @@ h1 {
     }
     
     #game-board {
-        grid-template-columns: repeat(8, 35px);
-        grid-template-rows: repeat(8, 35px);
+        grid-template-columns: repeat(8, min(35px, 4.5vh)); /* Responsive sizing */
+        grid-template-rows: repeat(8, min(35px, 4.5vh)); /* Responsive sizing */
         margin: 0;
     }
     
     #game-board div {
-        width: 35px;
-        height: 35px;
+        width: min(35px, 4.5vh); /* Responsive sizing */
+        height: min(35px, 4.5vh); /* Responsive sizing */
     }
     
     .triangle::before {
-        font-size: 25px;
-        line-height: 25px;
+        font-size: min(25px, 3vh); /* Responsive sizing */
+        line-height: min(25px, 3vh); /* Responsive sizing */
     }
     
     .triangle.white, .triangle.black {
-        border-left: 12px solid transparent;
-        border-right: 12px solid transparent;
-        border-bottom: 20px solid;
+        border-left: min(12px, 1.5vh) solid transparent; /* Responsive sizing */
+        border-right: min(12px, 1.5vh) solid transparent; /* Responsive sizing */
+        border-bottom: min(20px, 2.5vh) solid; /* Responsive sizing */
     }
 }
