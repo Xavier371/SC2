@@ -3,10 +3,10 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start; /* Changed from center to flex-start */
+    justify-content: flex-start;
     height: 100vh;
     margin: 0;
-    padding-top: 10px; /* Added padding to shift content up but not all the way to top */
+    padding-top: 20px; /* Increased padding to move content down a bit */
     background-color: #f0f0f0;
     overflow: hidden;
     position: fixed;
@@ -18,15 +18,15 @@ body {
 }
 
 h1 {
-    margin-top: 0; /* Reduced from default */
-    margin-bottom: 10px;
+    margin-top: 0;
+    margin-bottom: 15px; /* Increased margin */
 }
 
 .button-container {
     display: flex;
     flex-direction: column;
-    gap: 8px; /* Slightly reduced */
-    margin-bottom: 10px; /* Reduced from 15px */
+    gap: 10px;
+    margin-bottom: 15px; /* Increased margin */
     align-items: center;
 }
 
@@ -75,7 +75,7 @@ h1 {
     grid-template-columns: repeat(8, 60px);
     grid-template-rows: repeat(8, 60px);
     gap: 2px;
-    margin: 15px 0; /* Reduced top margin */
+    margin: 20px 0; /* Increased top margin to move board down */
     border: 2px solid #333;
     background-color: #ccc;
     touch-action: none;
@@ -175,29 +175,28 @@ h1 {
     border-bottom: 34px solid rgba(0,0,0,0.8);
 }
 
-/* Mobile styles */
-@media (max-width: 480px) {
+/* Mobile styles - Portrait */
+@media (max-width: 480px) and (orientation: portrait) {
     body {
         padding: 0;
-        padding-top: 5px; /* Minimal top padding on mobile */
-        justify-content: flex-start; /* Ensure content starts from top */
+        padding-top: 10px;
     }
     
     h1 {
         font-size: 24px;
-        margin-top: 0; /* Remove top margin */
-        margin-bottom: 5px;
+        margin-top: 5px;
+        margin-bottom: 10px;
     }
     
     .button-container {
-        gap: 5px;
-        margin-bottom: 5px;
+        gap: 8px;
+        margin-bottom: 10px;
     }
     
     #game-board {
         grid-template-columns: repeat(8, 40px);
         grid-template-rows: repeat(8, 40px);
-        margin: 5px 0; /* Reduced margin */
+        margin: 15px 0; /* More margin to move board down */
     }
     
     #game-board div {
@@ -225,23 +224,41 @@ h1 {
     }
 }
 
-/* Landscape orientation for mobile */
+/* Landscape orientation for phones */
 @media (max-height: 480px) and (orientation: landscape) {
     body {
-        justify-content: flex-start;
-        padding-top: 2px;
+        flex-direction: row; /* Change to row layout */
+        justify-content: space-around; /* Space between left and right side */
+        align-items: center;
+        padding: 5px;
+        overflow: auto; /* Allow scrolling if needed */
+    }
+    
+    .left-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 35%; /* Take up left side */
+    }
+    
+    .right-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 65%; /* Take up right side */
     }
     
     h1 {
         font-size: 20px;
-        margin-top: 0;
-        margin-bottom: 2px;
+        margin: 0 0 10px 0;
+        text-align: center;
     }
     
     .button-container {
-        flex-direction: row; /* Buttons in a row for landscape */
+        flex-direction: column;
+        width: 100%;
         gap: 5px;
-        margin-bottom: 2px;
+        margin-bottom: 5px;
     }
     
     #instructions-btn, #mode-toggle-btn {
@@ -253,7 +270,7 @@ h1 {
     #game-board {
         grid-template-columns: repeat(8, 35px);
         grid-template-rows: repeat(8, 35px);
-        margin: 2px 0;
+        margin: 0;
     }
     
     #game-board div {
