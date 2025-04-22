@@ -247,11 +247,12 @@ function isValidMove(row, col, newRow, newCol) {
 }
 
 function makeBlackMove() {
-    // Priority 1: Block white pieces with clear paths to the top
+    // Check for white pawns with clear paths to the top
     const whitePawnsWithClearPath = findWhitePawnsWithClearPath();
+    
+    // Priority 1: If white has a clear path, find the nearest black piece to intercept
     if (whitePawnsWithClearPath.length > 0) {
-        // Find black pieces that can intercept white pawns with advantage
-        const interceptionMove = findAdvantageousInterception(whitePawnsWithClearPath);
+        const interceptionMove = findNearestInterceptor(whitePawnsWithClearPath[0]);
         if (interceptionMove) {
             board[interceptionMove.toRow][interceptionMove.toCol] = 'black';
             board[interceptionMove.fromRow][interceptionMove.fromCol] = null;
@@ -276,7 +277,7 @@ function makeBlackMove() {
             return;
         }
     }
-
+    
     // Priority 2: Capture white pieces if possible
     for (let row = 0; row < boardSize; row++) {
         for (let col = 0; col < boardSize; col++) {
@@ -325,8 +326,8 @@ function makeBlackMove() {
             }
         }
     }
-
-    // Priority 3: Continue movement with the last moved piece
+    
+    // Priority 3: Continue movement with the last moved piece (only forward)
     if (lastMovedBlackPiece) {
         const { row, col } = lastMovedBlackPiece;
         
@@ -358,50 +359,24 @@ function makeBlackMove() {
             updateGameStatus();
             return;
         }
-        
-        // If can't move down, try sideways moves with the last moved piece
-        const directions = [
-            { r: 0, c: -1 }, // Left
-            { r: 0, c: 1 }   // Right
-        ];
-        
-        for (const dir of directions) {
-            const newRow = row + dir.r;
-            const newCol = col + dir.c;
-            
-            if (newRow >= 0 && newRow < boardSize && 
-                newCol >= 0 && newCol < boardSize && 
-                board[newRow][newCol] === null && 
-                !isAdjacentToWhite(newRow, newCol)) {
-                
-                board[newRow][newCol] = 'black';
-                board[row][col] = null;
-                
-                // Update last moved piece
-                lastMovedBlackPiece = { row: newRow, col: newCol };
-                
-                // End black's turn
-                currentPlayer = 'white';
-                renderBoard();
-                updateGameStatus();
-                return;
-            }
-        }
     }
     
-    // Priority 4: Move downward with the furthest advanced piece if possible
+    // Priority 4: Move any black piece forward (preferring the furthest advanced)
     let furthestPiece = null;
     let maxRow = -1;
     
-    for (let row = 0; row < boardSize; row++) {
+    for (let row = boardSize - 1; row >= 0; row--) {
         for (let col = 0; col < boardSize; col++) {
-            if (board[row][col] === 'black' && row > maxRow) {
+            if (board[row][col] === 'black') {
                 // Check if piece can move down
                 if (row < boardSize - 1 && 
                     board[row + 1][col] === null && 
                     !isAdjacentToWhite(row + 1, col)) {
-                    maxRow = row;
-                    furthestPiece = { row, col };
+                    
+                    if (row >= maxRow) {
+                        maxRow = row;
+                        furthestPiece = { row, col };
+                    }
                 }
             }
         }
@@ -432,14 +407,15 @@ function makeBlackMove() {
         return;
     }
     
-    // Priority 5: If no downward move is possible, try sideways moves with the furthest piece
+    // Priority 5: Only if no forward moves are possible, try sideways moves
+    // Prioritize the most advanced pieces
+    let sidewaysPiece = null;
     maxRow = -1;
-    furthestPiece = null;
     
     for (let row = boardSize - 1; row >= 0; row--) {
         for (let col = 0; col < boardSize; col++) {
             if (board[row][col] === 'black') {
-                // Check if piece can move sideways
+                // Check left and right
                 const directions = [
                     { r: 0, c: -1 }, // Left
                     { r: 0, c: 1 }   // Right
@@ -456,21 +432,21 @@ function makeBlackMove() {
                         
                         if (row > maxRow) {
                             maxRow = row;
-                            furthestPiece = { row, col, direction: dir };
+                            sidewaysPiece = { row, col, direction: dir };
                         }
                     }
                 }
             }
         }
         
-        // If we found a piece at this row, stop searching
-        if (furthestPiece !== null) {
+        // If we found a piece at this row, stop searching (we want the most advanced piece)
+        if (sidewaysPiece !== null) {
             break;
         }
     }
     
-    if (furthestPiece) {
-        const { row, col, direction } = furthestPiece;
+    if (sidewaysPiece) {
+        const { row, col, direction } = sidewaysPiece;
         const newRow = row + direction.r;
         const newCol = col + direction.c;
         
@@ -487,7 +463,7 @@ function makeBlackMove() {
         return;
     }
     
-    // Rule 6: If no safe move is found, just make any legal move
+    // Priority 6: If no safe move is found, make any legal move
     // (This should rarely happen, but prevents getting stuck)
     for (let row = 0; row < boardSize; row++) {
         for (let col = 0; col < boardSize; col++) {
@@ -590,52 +566,56 @@ function findWhitePawnsWithClearPath() {
     return pawnsWithPath;
 }
 
-// Find advantageous interceptions where black can block white with advantage
-function findAdvantageousInterception(whitePawnsWithPath) {
-    if (whitePawnsWithPath.length === 0) return null;
+// Find the nearest black piece that can intercept a white pawn with a clear path
+function findNearestInterceptor(whitePawn) {
+    if (!whitePawn) return null;
     
-    // Focus on the most dangerous white pawn (closest to top)
-    const targetPawn = whitePawnsWithPath[0];
-    const distanceToPromotion = targetPawn.distanceToTop;
-    
-    // Try to find a black piece that can intercept with advantage
     let bestInterceptor = null;
-    let bestInterceptAdvantage = -1;
+    let shortestDistance = Infinity;
     
+    // Try to find any black piece that can move to block the white pawn's path
     for (let row = 0; row < boardSize; row++) {
         for (let col = 0; col < boardSize; col++) {
             if (board[row][col] === 'black') {
-                // Calculate distance to interception point
-                const columnDistance = Math.abs(targetPawn.col - col);
-                const distanceToIntercept = columnDistance;
+                // Calculate horizontal distance to the white pawn's column
+                const colDistance = Math.abs(whitePawn.col - col);
                 
-                // If black can reach the column faster than white can reach top
-                if (distanceToIntercept < distanceToPromotion) {
-                    const advantage = distanceToPromotion - distanceToIntercept;
-                    
-                    // Check if this is the best interceptor found so far
-                    if (advantage > bestInterceptAdvantage) {
-                        // Determine the next move direction (toward target column)
-                        const moveDir = targetPawn.col > col ? 1 : -1; // Right or left
-                        const newCol = col + moveDir;
-                        
-                        // Verify the move is safe
-                        if (newCol >= 0 && newCol < boardSize && 
-                            board[row][newCol] === null && 
-                            !isAdjacentToWhite(row, newCol)) {
-                            
-                            bestInterceptAdvantage = advantage;
-                            bestInterceptor = { fromRow: row, fromCol: col, toRow: row, toCol: newCol };
-                        }
+                // If in same column but below white piece, move upward if possible
+                if (colDistance === 0 && row > whitePawn.row) {
+                    if (row > 0 && board[row - 1][col] === null && !isAdjacentToWhite(row - 1, col)) {
+                        return { fromRow: row, fromCol: col, toRow: row - 1, toCol: col };
                     }
                 }
                 
-                // Special case: If already in the same column, move down
-                if (col === targetPawn.col && row < boardSize - 1 &&
-                    board[row + 1][col] === null && 
-                    !isAdjacentToWhite(row + 1, col)) {
+                // If one step away horizontally, move toward the white pawn's column
+                if (colDistance === 1) {
+                    const moveDir = whitePawn.col > col ? 1 : -1; // Right or left
+                    const newCol = col + moveDir;
                     
-                    return { fromRow: row, fromCol: col, toRow: row + 1, toCol: col };
+                    // Verify the move is safe
+                    if (newCol >= 0 && newCol < boardSize && 
+                        board[row][newCol] === null && 
+                        !isAdjacentToWhite(row, newCol)) {
+                        
+                        return { fromRow: row, fromCol: col, toRow: row, toCol: newCol };
+                    }
+                }
+                
+                // For other pieces, track the one with shortest distance that can move toward target
+                if (colDistance > 1) {
+                    const moveDir = whitePawn.col > col ? 1 : -1; // Right or left
+                    const newCol = col + moveDir;
+                    
+                    // Verify the move is safe
+                    if (newCol >= 0 && newCol < boardSize && 
+                        board[row][newCol] === null && 
+                        !isAdjacentToWhite(row, newCol)) {
+                        
+                        if (colDistance < shortestDistance) {
+                            shortestDistance = colDistance;
+                            bestInterceptor = { fromRow: row, fromCol: col, toRow: row, toCol: newCol };
+                        }
+                    }
                 }
             }
         }
