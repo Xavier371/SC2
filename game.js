@@ -49,7 +49,7 @@ function renderBoard() {
                 const triangle = document.createElement('div');
                 triangle.className = 'triangle ' + board[row][col];
                 
-                // Make player's pieces draggable
+                // Make player's pieces interactive
                 if ((board[row][col] === 'white' && currentPlayer === 'white') || 
                     (gameMode === '2p' && board[row][col] === 'black' && currentPlayer === 'black')) {
                     
@@ -66,6 +66,76 @@ function renderBoard() {
                     triangle.addEventListener('dragend', () => {
                         isDragging = false;
                     });
+                    
+                    // Touch events for mobile
+                    triangle.addEventListener('touchstart', (e) => {
+                        const touch = e.touches[0];
+                        touchStartX = touch.clientX;
+                        touchStartY = touch.clientY;
+                        touchStartRow = row;
+                        touchStartCol = col;
+                        selectedPiece = { row, col };
+                        e.preventDefault();
+                    }, { passive: false });
+                    
+                    triangle.addEventListener('touchmove', (e) => {
+                        if (selectedPiece) {
+                            e.preventDefault();
+                        }
+                    }, { passive: false });
+                    
+                    triangle.addEventListener('touchend', (e) => {
+                        if (!selectedPiece) return;
+                        
+                        const touch = e.changedTouches[0];
+                        const endX = touch.clientX;
+                        const endY = touch.clientY;
+                        const dx = endX - touchStartX;
+                        const dy = endY - touchStartY;
+                        
+                        // Just detect general direction with a small threshold
+                        const SWIPE_THRESHOLD = 5;
+                        
+                        let newRow = touchStartRow;
+                        let newCol = touchStartCol;
+                        
+                        // Determine which direction had the largest movement
+                        if (Math.abs(dx) > Math.abs(dy)) {
+                            // Horizontal movement dominates
+                            if (dx > SWIPE_THRESHOLD) {
+                                // Right swipe
+                                newCol += 1;
+                            } else if (dx < -SWIPE_THRESHOLD) {
+                                // Left swipe
+                                newCol -= 1;
+                            }
+                        } else {
+                            // Vertical movement dominates
+                            if (dy > SWIPE_THRESHOLD) {
+                                // Down swipe
+                                newRow += 1;
+                            } else if (dy < -SWIPE_THRESHOLD) {
+                                // Up swipe
+                                newRow -= 1;
+                            }
+                        }
+                        
+                        // Try to make the move if valid
+                        if (newRow !== touchStartRow || newCol !== touchStartCol) {
+                            if (newRow >= 0 && newRow < boardSize && newCol >= 0 && newCol < boardSize && 
+                                isValidMove(touchStartRow, touchStartCol, newRow, newCol)) {
+                                movePiece(touchStartRow, touchStartCol, newRow, newCol);
+                            } else {
+                                selectedPiece = null;
+                                renderBoard();
+                            }
+                        } else {
+                            // Tiny movement might be a tap/click intent
+                            cellClick(touchStartRow, touchStartCol);
+                        }
+                        
+                        e.preventDefault();
+                    }, { passive: false });
                     
                     // Click/tap for selection
                     triangle.addEventListener('mousedown', (e) => {
@@ -194,7 +264,7 @@ function movePiece(fromRow, fromCol, toRow, toCol) {
         } else if (remainingBlack === 0) {
             renderBoard();
             setTimeout(() => {
-                alert('White wins by capturing all white pieces!');
+                alert('White wins by capturing all black pieces!');
                 initializeBoard();
             }, 100);
             return;
@@ -622,122 +692,9 @@ function toggleGameMode() {
     initializeBoard();
 }
 
-// Handle swipe gestures on mobile
-function handleSwipe(startX, startY, endX, endY, startRow, startCol) {
-    // Calculate the swipe direction
-    const dx = endX - startX;
-    const dy = endY - startY;
-    
-    // Determine which direction has the larger change
-    if (Math.abs(dx) > Math.abs(dy)) {
-        // Horizontal swipe
-        if (dx > 30) {
-            // Right swipe
-            const newCol = startCol + 1;
-            if (newCol < boardSize && isValidMove(startRow, startCol, startRow, newCol)) {
-                movePiece(startRow, startCol, startRow, newCol);
-                return true;
-            }
-        } else if (dx < -30) {
-            // Left swipe
-            const newCol = startCol - 1;
-            if (newCol >= 0 && isValidMove(startRow, startCol, startRow, newCol)) {
-                movePiece(startRow, startCol, startRow, newCol);
-                return true;
-            }
-        }
-    } else {
-        // Vertical swipe
-        if (dy > 30) {
-            // Down swipe
-            const newRow = startRow + 1;
-            if (newRow < boardSize && isValidMove(startRow, startCol, newRow, startCol)) {
-                movePiece(startRow, startCol, newRow, startCol);
-                return true;
-            }
-        } else if (dy < -30) {
-            // Up swipe
-            const newRow = startRow - 1;
-            if (newRow >= 0 && isValidMove(startRow, startCol, newRow, startCol)) {
-                movePiece(startRow, startCol, newRow, startCol);
-                return true;
-            }
-        }
-    }
-    
-    return false;
-}
-
 // Prevent default touch behavior to avoid scrolling
 document.addEventListener('DOMContentLoaded', function() {
-    const gameBoard = document.getElementById('game-board');
-    
-    // Handle touch start on the board
-    gameBoard.addEventListener('touchstart', function(e) {
-        const touch = e.touches[0];
-        const element = document.elementFromPoint(touch.clientX, touch.clientY);
-        
-        // Find the cell that was touched
-        let touchedCell = element;
-        while (touchedCell && !touchedCell.dataset.row) {
-            // If we touched a triangle, look for its parent cell
-            if (touchedCell.classList && touchedCell.classList.contains('triangle')) {
-                touchedCell = touchedCell.parentElement;
-                break;
-            }
-            if (touchedCell === document.body) break;
-            touchedCell = touchedCell.parentElement;
-        }
-        
-        if (touchedCell && touchedCell.dataset.row) {
-            const row = parseInt(touchedCell.dataset.row);
-            const col = parseInt(touchedCell.dataset.col);
-            
-            // Check if the cell contains a piece that the current player can move
-            if (board[row][col] === currentPlayer || 
-                (gameMode === '2p' && currentPlayer === 'black' && board[row][col] === 'black')) {
-                
-                touchStartX = touch.clientX;
-                touchStartY = touch.clientY;
-                touchStartRow = row;
-                touchStartCol = col;
-                selectedPiece = { row, col };
-                renderBoard();
-            }
-        }
-        
-        // Prevent scrolling if we're interacting with the game board
-        e.preventDefault();
-    }, { passive: false });
-    
-    // Handle touch move for visual feedback (optional)
-    gameBoard.addEventListener('touchmove', function(e) {
-        if (selectedPiece) {
-            e.preventDefault();
-        }
-    }, { passive: false });
-    
-    // Handle touch end to complete the swipe
-    gameBoard.addEventListener('touchend', function(e) {
-        if (selectedPiece) {
-            const touch = e.changedTouches[0];
-            const endX = touch.clientX;
-            const endY = touch.clientY;
-            
-            // Process the swipe and make the move if valid
-            const moved = handleSwipe(touchStartX, touchStartY, endX, endY, touchStartRow, touchStartCol);
-            
-            if (!moved) {
-                // If no move was made, just deselect the piece
-                selectedPiece = null;
-                renderBoard();
-            }
-            
-            e.preventDefault();
-        }
-    }, { passive: false });
-    
-    // Prevent scrolling on touch devices
+    // Prevent scrolling on touch devices when interacting with the game board
     document.addEventListener('touchmove', function(e) {
         if (e.target.closest('#game-board')) {
             e.preventDefault();
