@@ -1,23 +1,20 @@
 body {
+    margin: 0;
+    padding: 10px;
     font-family: Arial, sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    height: 100vh;
-    margin: 0;
-    background-color: #f0f0f0;
-    overflow: hidden;
-    position: fixed;
-    width: 100%;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-    touch-action: none;
+    justify-content: flex-start;
+    min-height: 100vh;
+    background-color: #f5f5f5;
 }
 
 h1 {
-    margin-bottom: 10px;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    font-size: 28px;
+    text-align: center;
 }
 
 .button-container {
@@ -25,179 +22,138 @@ h1 {
     flex-direction: column;
     gap: 10px;
     margin-bottom: 15px;
-    align-items: center;
+    width: 100%;
+    max-width: 300px;
 }
 
-#instructions-btn, #mode-toggle-btn, #close-instructions-btn {
-    padding: 8px 15px;
+button {
+    padding: 10px 15px;
     background-color: #4CAF50;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    width: 150px; /* Fixed width for both buttons */
+    font-size: 16px;
+    width: 100%;
 }
 
-#close-instructions-btn {
+button:hover {
+    background-color: #45a049;
+}
+
+#game-board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 1px;
+    background-color: #000;
+    border: 1px solid #000;
+    width: 100%;
+    max-width: 500px;
+    aspect-ratio: 1 / 1;
+    margin-top: 0;
+}
+
+#game-board > div {
+    background-color: #fff;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+#game-board > div:nth-child(odd):nth-child(-n+8),
+#game-board > div:nth-child(even):nth-child(n+9):nth-child(-n+16),
+#game-board > div:nth-child(odd):nth-child(n+17):nth-child(-n+24),
+#game-board > div:nth-child(even):nth-child(n+25):nth-child(-n+32),
+#game-board > div:nth-child(odd):nth-child(n+33):nth-child(-n+40),
+#game-board > div:nth-child(even):nth-child(n+41):nth-child(-n+48),
+#game-board > div:nth-child(odd):nth-child(n+49):nth-child(-n+56),
+#game-board > div:nth-child(even):nth-child(n+57):nth-child(-n+64) {
+    background-color: #000;
+}
+
+.triangle {
+    width: 0;
+    height: 0;
+    cursor: pointer;
+}
+
+.triangle.white {
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-bottom: 35px solid #fff;
+    filter: drop-shadow(0 0 1px #000);
+}
+
+.triangle.black {
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-bottom: 35px solid #000;
+    filter: drop-shadow(0 0 1px #fff);
+}
+
+.selected {
+    background-color: #7dc0ff !important;
+}
+
+#game-status {
     margin-top: 15px;
+    font-weight: bold;
+    font-size: 18px;
 }
 
 .popup {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.popup-content {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     background-color: white;
     padding: 20px;
-    border-radius: 5px;
-    max-width: 500px;
-    width: 80%;
-    text-align: center;
+    border: 2px solid #4CAF50;
+    border-radius: 10px;
+    z-index: 1000;
+    max-width: 80%;
+    max-height: 80%;
+    overflow-y: auto;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.popup h2 {
+    margin-top: 0;
+    color: #4CAF50;
+}
+
+.popup p {
+    line-height: 1.5;
+}
+
+.popup button {
+    margin-top: 15px;
 }
 
 .hidden {
     display: none;
 }
 
-#game-board {
-    display: grid;
-    grid-template-columns: repeat(8, 60px);
-    grid-template-rows: repeat(8, 60px);
-    gap: 2px;
-    margin: 20px 0;
-    border: 2px solid #333;
-    background-color: #ccc;
-    touch-action: none;
-}
-
-#game-board div {
-    width: 60px;
-    height: 60px;
-    border: 1px solid #999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-    background-color: #fff;
-    touch-action: none;
-}
-
-/* Checkerboard pattern */
-#game-board div[data-row="0"][data-col="1"],
-#game-board div[data-row="0"][data-col="3"],
-#game-board div[data-row="0"][data-col="5"],
-#game-board div[data-row="0"][data-col="7"],
-#game-board div[data-row="1"][data-col="0"],
-#game-board div[data-row="1"][data-col="2"],
-#game-board div[data-row="1"][data-col="4"],
-#game-board div[data-row="1"][data-col="6"],
-#game-board div[data-row="2"][data-col="1"],
-#game-board div[data-row="2"][data-col="3"],
-#game-board div[data-row="2"][data-col="5"],
-#game-board div[data-row="2"][data-col="7"],
-#game-board div[data-row="3"][data-col="0"],
-#game-board div[data-row="3"][data-col="2"],
-#game-board div[data-row="3"][data-col="4"],
-#game-board div[data-row="3"][data-col="6"],
-#game-board div[data-row="4"][data-col="1"],
-#game-board div[data-row="4"][data-col="3"],
-#game-board div[data-row="4"][data-col="5"],
-#game-board div[data-row="4"][data-col="7"],
-#game-board div[data-row="5"][data-col="0"],
-#game-board div[data-row="5"][data-col="2"],
-#game-board div[data-row="5"][data-col="4"],
-#game-board div[data-row="5"][data-col="6"],
-#game-board div[data-row="6"][data-col="1"],
-#game-board div[data-row="6"][data-col="3"],
-#game-board div[data-row="6"][data-col="5"],
-#game-board div[data-row="6"][data-col="7"],
-#game-board div[data-row="7"][data-col="0"],
-#game-board div[data-row="7"][data-col="2"],
-#game-board div[data-row="7"][data-col="4"],
-#game-board div[data-row="7"][data-col="6"] {
-    background-color: #000000;
-}
-
-.selected {
-    box-shadow: inset 0 0 0 3px #4CAF50;
-}
-
-/* Use both unicode and border triangles for maximum compatibility */
-.triangle {
-    cursor: pointer;
-    position: relative;
-    width: 0;
-    height: 0;
-    text-align: center;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.triangle::before {
-    content: "▲";
-    position: absolute;
-    font-size: 40px;
-    line-height: 40px;
-    z-index: 2;
-}
-
-.triangle.white::before {
-    color: white;
-    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-}
-
-.triangle.black::before {
-    color: black;
-    text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
-}
-
-.triangle.white {
-    border-left: 20px solid transparent;
-    border-right: 20px solid transparent;
-    border-bottom: 34px solid rgba(255,255,255,0.8);
-}
-
-.triangle.black {
-    border-left: 20px solid transparent;
-    border-right: 20px solid transparent;
-    border-bottom: 34px solid rgba(0,0,0,0.8);
-}
-
-/* Mobile styles */
-@media (max-width: 480px) {
+/* Media query for mobile devices */
+@media (max-width: 768px) {
     body {
-        padding: 0;
+        padding-top: 5px;
     }
     
     h1 {
+        margin-top: 5px;
+        margin-bottom: 10px;
         font-size: 24px;
-        margin-top: 10px;
-        margin-bottom: 5px;
+    }
+    
+    .button-container {
+        margin-bottom: 10px;
     }
     
     #game-board {
-        grid-template-columns: repeat(8, 40px);
-        grid-template-rows: repeat(8, 40px);
-    }
-    
-    #game-board div {
-        width: 40px;
-        height: 40px;
-    }
-    
-    .triangle::before {
-        font-size: 30px;
-        line-height: 30px;
+        max-width: 95vw;
     }
     
     .triangle.white, .triangle.black {
@@ -205,12 +161,35 @@ h1 {
         border-right: 15px solid transparent;
         border-bottom: 25px solid;
     }
-    
+
     .triangle.white {
-        border-bottom-color: rgba(255,255,255,0.8);
+        border-bottom-color: #fff;
+    }
+
+    .triangle.black {
+        border-bottom-color: #000;
     }
     
-    .triangle.black {
-        border-bottom-color: rgba(0,0,0,0.8);
+    #game-status {
+        margin-top: 10px;
+        font-size: 16px;
+    }
+}
+
+/* For very small screens */
+@media (max-width: 480px) {
+    body {
+        padding-top: 2px;
+    }
+    
+    h1 {
+        margin-top: 2px;
+        margin-bottom: 8px;
+        font-size: 22px;
+    }
+    
+    .popup {
+        padding: 15px;
+        max-width: 90%;
     }
 }
