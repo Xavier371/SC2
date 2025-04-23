@@ -315,7 +315,7 @@ function isValidMove(row, col, newRow, newCol) {
 }
 
 // makeBlackMove()
-// Final AI for Black: captures adjacent white pieces, avoids adjacency, blocks uncontained white pieces, and prioritizes containment
+// Final AI for Black: captures, avoids adjacency, ensures containment, and pushes pieces toward promotion
 
 function makeBlackMove() {
     const size = boardSize;
@@ -326,9 +326,8 @@ function makeBlackMove() {
     for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
             if (board[r][c] !== 'white') continue;
-
             let contained = false;
-            for (let row = r + 1; row < size && !contained; row++) {
+            for (let row = r - 1; row >= 0 && !contained; row--) {
                 for (let dc of [-1, 0, 1]) {
                     let col = c + dc;
                     if (col >= 0 && col < size && board[row][col] === 'black') {
@@ -341,13 +340,14 @@ function makeBlackMove() {
         }
     }
 
-    // Step 2: Evaluate all valid black moves (only horizontal and vertical)
+    // Step 2: Evaluate all valid black moves (no diagonal moves)
     for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
             if (board[r][c] !== 'black') continue;
 
             const directions = [
                 { dr: 1, dc: 0 },  // Down
+                { dr: -1, dc: 0 }, // Up
                 { dr: 0, dc: -1 }, // Left
                 { dr: 0, dc: 1 }   // Right
             ];
@@ -363,37 +363,40 @@ function makeBlackMove() {
                 if (empty || capture) {
                     let score = 0;
 
-                    // Priority 1: immediate capture
+                    // Priority 1: capture
                     if (capture) score += 1000;
 
-                    // Priority 2: avoid adjacency to white (unless capturing)
+                    // Priority 2: avoid adjacency to white unless capturing
                     let safe = true;
-                    for (let ar = nr - 1; ar <= nr + 1; ar++) {
-                        for (let ac = nc - 1; ac <= nc + 1; ac++) {
-                            if (ar === nr && ac === nc) continue;
-                            if (ar >= 0 && ar < size && ac >= 0 && ac < size) {
-                                if (board[ar][ac] === 'white') safe = false;
-                            }
+                    for (let adj of [
+                        { dr: -1, dc: 0 }, { dr: 1, dc: 0 },
+                        { dr: 0, dc: -1 }, { dr: 0, dc: 1 }
+                    ]) {
+                        const ar = nr + adj.dr;
+                        const ac = nc + adj.dc;
+                        if (ar >= 0 && ar < size && ac >= 0 && ac < size && board[ar][ac] === 'white') {
+                            safe = false;
+                            break;
                         }
                     }
                     if (!safe && !capture) score -= 1000;
 
-                    // Priority 3: promotion
-                    if (nr === size - 1) score += 500;
-
-                    // Priority 4: block uncontained white pieces
+                    // Priority 3: ensure containment of white pieces
                     for (let wr = 0; wr < size; wr++) {
                         for (let wc = 0; wc < size; wc++) {
                             if (board[wr][wc] === 'white' && !whiteContained[wr][wc]) {
-                                if (nc >= wc - 1 && nc <= wc + 1 && nr > wr) {
-                                    score += 200;
+                                if (nr < wr && Math.abs(nc - wc) <= 1) {
+                                    score += 300;
                                 }
                             }
                         }
                     }
 
-                    // Priority 5: safe forward progress
-                    if (!capture && dir.dr === 1 && safe) score += 50;
+                    // Priority 4: move forward (toward promotion)
+                    if (!capture && dir.dr === 1 && safe) score += 100;
+
+                    // Priority 5: promote
+                    if (nr === size - 1) score += 500;
 
                     moves.push({ from: { r, c }, to: { r: nr, c: nc }, score });
                 }
@@ -416,6 +419,7 @@ function makeBlackMove() {
     renderBoard();
     updateGameStatus();
 }
+
 
 
 
