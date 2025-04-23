@@ -375,72 +375,14 @@ function makeBlackMove() {
         }
     }
 
-    // PRIORITY 2: Block white pawns with clear paths
-    // Get all white pawns
-    const whitePawns = [];
-    for (let row = 0; row < boardSize; row++) {
-        for (let col = 0; col < boardSize; col++) {
-            if (board[row][col] === 'white') {
-                whitePawns.push({ row, col });
-            }
-        }
-    }
-    
-    // Sort white pawns by proximity to winning (lowest row first)
-    whitePawns.sort((a, b) => a.row - b.row);
-    
-    // Map to track which black pieces are assigned to block which white pawns
-    let blackPieceAssignments = new Map();
-    let blackPiecesUsed = new Set();
-    
-    // First pass: try to match each white pawn with a black pawn that can block it
-    for (const whitePawn of whitePawns) {
-        const blockingOptions = findPotentialBlockers(whitePawn);
-        
-        if (blockingOptions.length > 0) {
-            // Sort blocking options by preference:
-            // 1) Already in blocking position
-            // 2) Distance from the white pawn's column
-            blockingOptions.sort((a, b) => {
-                const aIsBlocking = isInBlockingPosition(a, whitePawn) ? 0 : 1;
-                const bIsBlocking = isInBlockingPosition(b, whitePawn) ? 0 : 1;
-                
-                if (aIsBlocking !== bIsBlocking) {
-                    return aIsBlocking - bIsBlocking;
-                }
-                
-                // If both are equally blocking or not blocking, prefer closest
-                return Math.abs(a.col - whitePawn.col) - Math.abs(b.col - whitePawn.col);
-            });
-            
-            // Find the first black piece that hasn't been assigned yet
-            for (const blocker of blockingOptions) {
-                const blockerKey = `${blocker.row},${blocker.col}`;
-                if (!blackPiecesUsed.has(blockerKey)) {
-                    blackPieceAssignments.set(blockerKey, whitePawn);
-                    blackPiecesUsed.add(blockerKey);
-                    break;
-                }
-            }
-        }
-    }
-    
-    // PRIORITY 2A: Move assigned blockers that are not in position
-    for (const [blockerKey, whitePawn] of blackPieceAssignments.entries()) {
-        const [row, col] = blockerKey.split(',').map(Number);
-        
-        // Skip if the black pawn is already in a blocking position
-        if (isInBlockingPosition({ row, col }, whitePawn)) {
-            continue;
-        }
-        
-        // Calculate best move to block this white pawn
-        const blockingMove = calculateBlockingMove({ row, col }, whitePawn);
-        
+    // PRIORITY 2: Block white pawns that could reach the end of the board
+    const whitePawnsWithClearPath = findWhitePawnsWithClearPath();
+    if (whitePawnsWithClearPath.length > 0) {
+        // Find the closest black piece that can block the path
+        const blockingMove = findBlockingMove(whitePawnsWithClearPath[0]);
         if (blockingMove) {
-            // Execute the blocking move
             board[blockingMove.toRow][blockingMove.toCol] = 'black';
-            board[row][col] = null;
+            board[blockingMove.fromRow][blockingMove.fromCol] = null;
             
             // Update last moved piece
             lastMovedBlackPiece = { row: blockingMove.toRow, col: blockingMove.toCol };
@@ -464,115 +406,78 @@ function makeBlackMove() {
     }
 
     // PRIORITY 3: Try to advance black pawns toward the end of the board
-    // Prioritize unassigned black pawns first
+    // While adhering to: Never move into a square adjacent to a white piece
     
-    // First try to continue with the last moved piece if possible and if it's not assigned as a blocker
+    // First try to continue with the last moved piece if possible
     if (lastMovedBlackPiece) {
         const { row, col } = lastMovedBlackPiece;
-        const blockerKey = `${row},${col}`;
         
-        if (!blackPieceAssignments.has(blockerKey)) {
-            // Try to move down first (toward end of board)
-            if (row < boardSize - 1 && 
-                board[row + 1][col] === null && 
-                !isAdjacentToWhite(row + 1, col)) {
-                
-                // Move the piece down
-                board[row + 1][col] = 'black';
-                board[row][col] = null;
-                
-                // Update last moved piece
-                lastMovedBlackPiece = { row: row + 1, col: col };
-                
-                // Check if black won
-                if (row + 1 === boardSize - 1) {
-                    renderBoard();
-                    setTimeout(() => {
-                        alert('Black wins!');
-                        initializeBoard();
-                    }, 100);
-                    return;
-                }
-                
-                // End black's turn
-                currentPlayer = 'white';
+        // Try to move down first (toward end of board)
+        if (row < boardSize - 1 && 
+            board[row + 1][col] === null && 
+            !isAdjacentToWhite(row + 1, col)) {
+            
+            // Move the piece down
+            board[row + 1][col] = 'black';
+            board[row][col] = null;
+            
+            // Update last moved piece
+            lastMovedBlackPiece = { row: row + 1, col: col };
+            
+            // Check if black won
+            if (row + 1 === boardSize - 1) {
                 renderBoard();
-                updateGameStatus();
+                setTimeout(() => {
+                    alert('Black wins!');
+                    initializeBoard();
+                }, 100);
                 return;
             }
+            
+            // End black's turn
+            currentPlayer = 'white';
+            renderBoard();
+            updateGameStatus();
+            return;
         }
     }
     
-    // Find unassigned black pawns that can move down
-    const advanceMoves = [];
+    // If can't continue with last moved piece, find the most advanced black piece that can move down
+    let furthestPiece = null;
+    let maxRow = -1;
     
-    for (let row = 0; row < boardSize; row++) {
+    for (let row = boardSize - 1; row >= 0; row--) {
         for (let col = 0; col < boardSize; col++) {
             if (board[row][col] === 'black') {
-                const blockerKey = `${row},${col}`;
-                
-                // Skip if this piece is assigned as a blocker
-                if (blackPieceAssignments.has(blockerKey)) {
-                    continue;
-                }
-                
                 // Try to move down
                 if (row < boardSize - 1 && 
                     board[row + 1][col] === null && 
                     !isAdjacentToWhite(row + 1, col)) {
                     
-                    advanceMoves.push({
-                        fromRow: row,
-                        fromCol: col,
-                        toRow: row + 1,
-                        toCol: col,
-                        priority: row // Higher row = higher priority (closer to goal)
-                    });
-                }
-                
-                // Try sideways moves
-                const sidewaysDirections = [
-                    { r: 0, c: -1 }, // Left
-                    { r: 0, c: 1 }   // Right
-                ];
-                
-                for (const dir of sidewaysDirections) {
-                    const newRow = row + dir.r;
-                    const newCol = col + dir.c;
-                    
-                    if (newRow >= 0 && newRow < boardSize && 
-                        newCol >= 0 && newCol < boardSize && 
-                        board[newRow][newCol] === null && 
-                        !isAdjacentToWhite(newRow, newCol)) {
-                        
-                        advanceMoves.push({
-                            fromRow: row,
-                            fromCol: col,
-                            toRow: newRow,
-                            toCol: newCol,
-                            priority: row - 0.5 // Sideways moves have lower priority than forward moves
-                        });
+                    if (row >= maxRow) {
+                        maxRow = row;
+                        furthestPiece = { row, col };
                     }
                 }
             }
         }
+        
+        // If we found a piece at this row level that can move down, use it
+        if (furthestPiece !== null) {
+            break;
+        }
     }
     
-    // Sort by priority (highest first)
-    advanceMoves.sort((a, b) => b.priority - a.priority);
-    
-    if (advanceMoves.length > 0) {
-        const move = advanceMoves[0];
-        
-        // Move the piece
-        board[move.toRow][move.toCol] = 'black';
-        board[move.fromRow][move.fromCol] = null;
+    if (furthestPiece) {
+        const { row, col } = furthestPiece;
+        board[row + 1][col] = 'black';
+        board[row][col] = null;
         
         // Update last moved piece
-        lastMovedBlackPiece = { row: move.toRow, col: move.toCol };
+        lastMovedBlackPiece = { row: row + 1, col: col };
         
         // Check if black won
-        if (move.toRow === boardSize - 1) {
+        if (row + 1 === boardSize - 1) {
             renderBoard();
             setTimeout(() => {
                 alert('Black wins!');
@@ -588,16 +493,19 @@ function makeBlackMove() {
         return;
     }
     
-    // If no valid move was found, try moving any black piece that can move
-    for (let row = 0; row < boardSize; row++) {
+    // If no piece can move down, try sideways moves with the most advanced pieces
+    // This is still following the "try to advance toward the end" priority
+    // as we're positioning pieces to potentially move down in future turns
+    let sidewaysPiece = null;
+    maxRow = -1;
+    
+    for (let row = boardSize - 1; row >= 0; row--) {
         for (let col = 0; col < boardSize; col++) {
             if (board[row][col] === 'black') {
-                // Check all four directions
+                // Try sideways moves
                 const directions = [
-                    { r: 1, c: 0 },  // Down
                     { r: 0, c: -1 }, // Left
-                    { r: 0, c: 1 },  // Right
-                    { r: -1, c: 0 }  // Up
+                    { r: 0, c: 1 }   // Right
                 ];
                 
                 for (const dir of directions) {
@@ -606,158 +514,47 @@ function makeBlackMove() {
                     
                     if (newRow >= 0 && newRow < boardSize && 
                         newCol >= 0 && newCol < boardSize && 
-                        board[newRow][newCol] === null) {
+                        board[newRow][newCol] === null && 
+                        !isAdjacentToWhite(newRow, newCol)) {
                         
-                        // Move the piece
-                        board[newRow][newCol] = 'black';
-                        board[row][col] = null;
-                        
-                        // Update last moved piece
-                        lastMovedBlackPiece = { row: newRow, col: newCol };
-                        
-                        // Check if black won
-                        if (newRow === boardSize - 1) {
-                            renderBoard();
-                            setTimeout(() => {
-                                alert('Black wins!');
-                                initializeBoard();
-                            }, 100);
-                            return;
+                        if (row >= maxRow) {
+                            maxRow = row;
+                            sidewaysPiece = { row, col, direction: dir };
                         }
-                        
-                        // End black's turn
-                        currentPlayer = 'white';
-                        renderBoard();
-                        updateGameStatus();
-                        return;
                     }
                 }
             }
         }
+        
+        // If we found a piece at this row level that can move sideways, use it
+        if (sidewaysPiece !== null) {
+            break;
+        }
     }
     
-    // If no move at all is possible, just skip the turn
+    if (sidewaysPiece) {
+        const { row, col, direction } = sidewaysPiece;
+        const newRow = row + direction.r;
+        const newCol = col + direction.c;
+        
+        board[newRow][newCol] = 'black';
+        board[row][col] = null;
+        
+        // Update last moved piece
+        lastMovedBlackPiece = { row: newRow, col: newCol };
+        
+        // End black's turn
+        currentPlayer = 'white';
+        renderBoard();
+        updateGameStatus();
+        return;
+    }
+    
+    // If no safe move was found at all, just skip the turn
+    // In a real game, this would be a stalemate, but we'll just continue
     currentPlayer = 'white';
     renderBoard();
     updateGameStatus();
-}
-
-// Find potential black pieces that can block a white pawn
-function findPotentialBlockers(whitePawn) {
-    const blockers = [];
-    
-    for (let row = 0; row < boardSize; row++) {
-        for (let col = 0; col < boardSize; col++) {
-            if (board[row][col] === 'black') {
-                // Only consider black pieces that are above the white pawn
-                if (row < whitePawn.row) {
-                    // Calculate Manhattan distance to determine proximity
-                    const distance = Math.abs(col - whitePawn.col) + Math.abs(row - whitePawn.row);
-                    
-                    blockers.push({
-                        row,
-                        col,
-                        distance
-                    });
-                }
-            }
-        }
-    }
-    
-    // Sort by distance (closest first)
-    blockers.sort((a, b) => a.distance - b.distance);
-    
-    return blockers;
-}
-
-// Check if a black pawn is in a blocking position for a white pawn
-function isInBlockingPosition(blackPawn, whitePawn) {
-    // Same column and above white pawn
-    if (blackPawn.col === whitePawn.col && blackPawn.row < whitePawn.row) {
-        return true;
-    }
-    
-    // Adjacent column and above or at the same row as white pawn
-    if (Math.abs(blackPawn.col - whitePawn.col) === 1 && blackPawn.row <= whitePawn.row) {
-        return true;
-    }
-    
-    return false;
-}
-
-// Calculate a move to get a black pawn into a blocking position
-function calculateBlockingMove(blackPawn, whitePawn) {
-    // If black is already directly above white in the same column, stay there
-    if (blackPawn.col === whitePawn.col && blackPawn.row < whitePawn.row) {
-        return null; // Already in optimal blocking position
-    }
-    
-    // If in an adjacent column and at or above white's row, consider moving to white's column
-    if (Math.abs(blackPawn.col - whitePawn.col) === 1 && blackPawn.row <= whitePawn.row) {
-        // Check if white's column is empty
-        if (board[blackPawn.row][whitePawn.col] === null && !isAdjacentToWhite(blackPawn.row, whitePawn.col)) {
-            return {
-                toRow: blackPawn.row,
-                toCol: whitePawn.col
-            };
-        }
-        return null; // Already in a good blocking position or can't move to a better one
-    }
-    
-    // If not in blocking position yet, find the best move towards it
-    const possibleMoves = [];
-    
-    // Check horizontal move towards white's column
-    if (blackPawn.col !== whitePawn.col) {
-        const moveCol = blackPawn.col < whitePawn.col ? blackPawn.col + 1 : blackPawn.col - 1;
-        
-        if (moveCol >= 0 && moveCol < boardSize && 
-            board[blackPawn.row][moveCol] === null && 
-            !isAdjacentToWhite(blackPawn.row, moveCol)) {
-            
-            possibleMoves.push({
-                toRow: blackPawn.row,
-                toCol: moveCol,
-                priority: 2 // Higher priority for horizontal moves towards white's column
-            });
-        }
-    }
-    
-    // Check move down if not at white's row yet
-    if (blackPawn.row < whitePawn.row - 1) {
-        if (board[blackPawn.row + 1][blackPawn.col] === null && 
-            !isAdjacentToWhite(blackPawn.row + 1, blackPawn.col)) {
-            
-            possibleMoves.push({
-                toRow: blackPawn.row + 1,
-                toCol: blackPawn.col,
-                priority: 1 // Lower priority for vertical moves
-            });
-        }
-    }
-    
-    // Check diagonal move (down and towards white's column)
-    if (blackPawn.row < whitePawn.row - 1 && blackPawn.col !== whitePawn.col) {
-        const moveCol = blackPawn.col < whitePawn.col ? blackPawn.col + 1 : blackPawn.col - 1;
-        
-        if (moveCol >= 0 && moveCol < boardSize && 
-            board[blackPawn.row + 1][moveCol] === null && 
-            !isAdjacentToWhite(blackPawn.row + 1, moveCol)) {
-            
-            // Can't actually move diagonally, but try to simulate a diagonal move
-            // with two separate moves by prioritizing the horizontal move first
-            possibleMoves.push({
-                toRow: blackPawn.row,
-                toCol: moveCol,
-                priority: 3 // Highest priority for moves that get closer to the diagonal
-            });
-        }
-    }
-    
-    // Sort by priority (highest first)
-    possibleMoves.sort((a, b) => b.priority - a.priority);
-    
-    return possibleMoves.length > 0 ? possibleMoves[0] : null;
 }
 
 // Helper function: Check if a position is adjacent to a white piece
@@ -783,6 +580,99 @@ function isAdjacentToWhite(row, col) {
     return false;
 }
 
+// Find white pawns that have a clear path to the top row
+function findWhitePawnsWithClearPath() {
+    const pawnsWithPath = [];
+    
+    for (let col = 0; col < boardSize; col++) {
+        for (let row = 0; row < boardSize; row++) {
+            if (board[row][col] === 'white') {
+                let clearPath = true;
+                
+                // Check path from current position to top row
+                for (let r = row - 1; r >= 0; r--) {
+                    if (board[r][col] !== null) {
+                        clearPath = false;
+                        break;
+                    }
+                }
+                
+                if (clearPath) {
+                    pawnsWithPath.push({ row, col, distanceToTop: row });
+                }
+                
+                // Only check the first white piece in each column
+                break;
+            }
+        }
+    }
+    
+    // Sort by distance to top (closest first)
+    pawnsWithPath.sort((a, b) => a.distanceToTop - b.distanceToTop);
+    
+    return pawnsWithPath;
+}
+
+// Find a move to block a white pawn with a clear path to the top
+function findBlockingMove(whitePawn) {
+    if (!whitePawn) return null;
+    
+    // First, try to find a black piece already in the same column that can move up
+    for (let row = whitePawn.row + 1; row < boardSize; row++) {
+        if (board[row][whitePawn.col] === 'black' && row > 0 && 
+            board[row - 1][whitePawn.col] === null && 
+            !isAdjacentToWhite(row - 1, whitePawn.col)) {
+            
+            return { fromRow: row, fromCol: whitePawn.col, toRow: row - 1, toCol: whitePawn.col };
+        }
+    }
+    
+    // Next, find black pieces that are one move away from blocking the column
+    for (let row = 0; row < boardSize; row++) {
+        // Check pieces adjacent to the white pawn's column
+        const adjacentCols = [whitePawn.col - 1, whitePawn.col + 1];
+        
+        for (const col of adjacentCols) {
+            if (col >= 0 && col < boardSize && board[row][col] === 'black') {
+                // Try to move to the white pawn's column
+                if (board[row][whitePawn.col] === null && !isAdjacentToWhite(row, whitePawn.col)) {
+                    return { fromRow: row, fromCol: col, toRow: row, toCol: whitePawn.col };
+                }
+            }
+        }
+    }
+    
+    // If no direct blocking is possible, find the nearest black piece that can move toward the column
+    let bestBlocker = null;
+    let minDistance = Infinity;
+    
+    for (let row = 0; row < boardSize; row++) {
+        for (let col = 0; col < boardSize; col++) {
+            if (board[row][col] === 'black') {
+                const distance = Math.abs(col - whitePawn.col);
+                
+                // If this piece is closer than our current best blocker
+                if (distance > 0 && distance < minDistance) {
+                    // Determine direction to move (toward white pawn's column)
+                    const moveDir = whitePawn.col > col ? 1 : -1;
+                    const newCol = col + moveDir;
+                    
+                    // Check if move is valid and safe
+                    if (newCol >= 0 && newCol < boardSize && 
+                        board[row][newCol] === null && 
+                        !isAdjacentToWhite(row, newCol)) {
+                        
+                        minDistance = distance;
+                        bestBlocker = { fromRow: row, fromCol: col, toRow: row, toCol: newCol };
+                    }
+                }
+            }
+        }
+    }
+    
+    return bestBlocker;
+}
+
 function updateGameStatus() {
     // If the status element exists, update it
     const status = document.getElementById('game-status');
@@ -801,6 +691,21 @@ function toggleGameMode() {
     // Reset the game
     initializeBoard();
 }
+
+// Prevent default touch behavior to avoid scrolling
+document.addEventListener('DOMContentLoaded', function() {
+    // Prevent scrolling on touch devices when interacting with the game board
+    document.addEventListener('touchmove', function(e) {
+        if (e.target.closest('#game-board')) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+    
+    // Instructions popup functionality
+    const instructionsBtn = document.getElementById('instructions-btn');
+    const closeInstructionsBtn = document.getElementById('close-instructions-btn');
+    const instructionsPopup = document.getElementById('instructions-popup');
+    
     if (instructionsBtn) {
         instructionsBtn.addEventListener('click', function() {
             instructionsPopup.classList.remove('hidden');
