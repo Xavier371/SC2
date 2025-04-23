@@ -317,22 +317,31 @@ function isValidMove(row, col, newRow, newCol) {
 // makeBlackMove()
 // Smart AI for Black that prioritizes defense, avoids adjacency, and captures opportunistically
 
+// makeBlackMove()
+// Updated AI for Black: captures adjacent white pieces, avoids adjacency, and evaluates containment of white pieces
+
 function makeBlackMove() {
     const size = boardSize;
     const moves = [];
 
-    // Step 1: Identify threats from white pieces
-    const whitePaths = [];
-    for (let c = 0; c < size; c++) {
-        for (let r = 0; r < size; r++) {
-            if (board[r][c] === 'white') {
-                let clear = true;
-                for (let k = r - 1; k >= 0; k--) {
-                    if (board[k][c]) clear = false;
+    // Step 1: Determine which white pieces are contained
+    const whiteContained = Array.from({ length: size }, () => Array(size).fill(false));
+
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            if (board[r][c] !== 'white') continue;
+
+            let contained = false;
+            for (let row = r - 1; row >= 0 && !contained; row--) {
+                for (let dc of [-1, 0, 1]) {
+                    let col = c + dc;
+                    if (col >= 0 && col < size && board[row][col] === 'black') {
+                        contained = true;
+                        break;
+                    }
                 }
-                if (clear) whitePaths.push({ r, c });
-                break;
             }
+            whiteContained[r][c] = contained;
         }
     }
 
@@ -378,9 +387,15 @@ function makeBlackMove() {
                     }
                     if (!safe) score -= 200;
 
-                    // Defense bonus: block white with clear path
-                    for (let wp of whitePaths) {
-                        if (wp.c === nc && nr < wp.r) score += 50;
+                    // Bonus: block white pieces with clear paths
+                    for (let wr = 0; wr < size; wr++) {
+                        for (let wc = 0; wc < size; wc++) {
+                            if (board[wr][wc] === 'white' && !whiteContained[wr][wc]) {
+                                if (nc >= wc - 1 && nc <= wc + 1 && nr < wr) {
+                                    score += 50;
+                                }
+                            }
+                        }
                     }
 
                     moves.push({ from: { r, c }, to: { r: nr, c: nc }, score });
@@ -404,6 +419,7 @@ function makeBlackMove() {
     renderBoard();
     updateGameStatus();
 }
+
 
 
 // Helper function: Check if a position is adjacent to a white piece
