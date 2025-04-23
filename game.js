@@ -315,24 +315,20 @@ function isValidMove(row, col, newRow, newCol) {
 }
 
 // makeBlackMove()
-// Smart AI for Black that prioritizes defense, avoids adjacency, and captures opportunistically
-
-// makeBlackMove()
-// Updated AI for Black: captures adjacent white pieces, avoids adjacency, and evaluates containment of white pieces
+// Final AI for Black: captures adjacent white pieces, avoids adjacency, blocks uncontained white pieces, and prioritizes containment
 
 function makeBlackMove() {
     const size = boardSize;
     const moves = [];
 
-    // Step 1: Determine which white pieces are contained
+    // Step 1: Determine containment status for each white piece
     const whiteContained = Array.from({ length: size }, () => Array(size).fill(false));
-
     for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
             if (board[r][c] !== 'white') continue;
 
             let contained = false;
-            for (let row = r - 1; row >= 0 && !contained; row--) {
+            for (let row = r + 1; row < size && !contained; row++) {
                 for (let dc of [-1, 0, 1]) {
                     let col = c + dc;
                     if (col >= 0 && col < size && board[row][col] === 'black') {
@@ -345,17 +341,15 @@ function makeBlackMove() {
         }
     }
 
-    // Step 2: Evaluate all black moves
+    // Step 2: Evaluate all valid black moves (only horizontal and vertical)
     for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
             if (board[r][c] !== 'black') continue;
 
             const directions = [
-                { dr: 1, dc: 0 },   // Down
-                { dr: 1, dc: -1 },  // Diag left
-                { dr: 1, dc: 1 },   // Diag right
-                { dr: 0, dc: -1 },  // Left
-                { dr: 0, dc: 1 }    // Right
+                { dr: 1, dc: 0 },  // Down
+                { dr: 0, dc: -1 }, // Left
+                { dr: 0, dc: 1 }   // Right
             ];
 
             for (let dir of directions) {
@@ -363,19 +357,16 @@ function makeBlackMove() {
                 if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
 
                 const target = board[nr][nc];
-                const forward = dir.dr === 1;
-                const sideways = dir.dr === 0;
                 const capture = target === 'white';
                 const empty = !target;
 
                 if (empty || capture) {
                     let score = 0;
-                    if (capture) score += 100;
-                    if (nr === size - 1) score += 1000;
-                    if (forward && !capture) score += 20;
-                    if (sideways) score -= 5;
 
-                    // Avoid adjacent to white
+                    // Priority 1: immediate capture
+                    if (capture) score += 1000;
+
+                    // Priority 2: avoid adjacency to white (unless capturing)
                     let safe = true;
                     for (let ar = nr - 1; ar <= nr + 1; ar++) {
                         for (let ac = nc - 1; ac <= nc + 1; ac++) {
@@ -385,18 +376,24 @@ function makeBlackMove() {
                             }
                         }
                     }
-                    if (!safe) score -= 200;
+                    if (!safe && !capture) score -= 1000;
 
-                    // Bonus: block white pieces with clear paths
+                    // Priority 3: promotion
+                    if (nr === size - 1) score += 500;
+
+                    // Priority 4: block uncontained white pieces
                     for (let wr = 0; wr < size; wr++) {
                         for (let wc = 0; wc < size; wc++) {
                             if (board[wr][wc] === 'white' && !whiteContained[wr][wc]) {
-                                if (nc >= wc - 1 && nc <= wc + 1 && nr < wr) {
-                                    score += 50;
+                                if (nc >= wc - 1 && nc <= wc + 1 && nr > wr) {
+                                    score += 200;
                                 }
                             }
                         }
                     }
+
+                    // Priority 5: safe forward progress
+                    if (!capture && dir.dr === 1 && safe) score += 50;
 
                     moves.push({ from: { r, c }, to: { r: nr, c: nc }, score });
                 }
@@ -404,7 +401,7 @@ function makeBlackMove() {
         }
     }
 
-    // Step 3: Choose best move
+    // Step 3: Make the best move
     if (moves.length > 0) {
         moves.sort((a, b) => b.score - a.score);
         const best = moves[0];
@@ -419,6 +416,7 @@ function makeBlackMove() {
     renderBoard();
     updateGameStatus();
 }
+
 
 
 
